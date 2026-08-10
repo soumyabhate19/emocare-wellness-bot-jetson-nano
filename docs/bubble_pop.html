@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bubble Breather - EmoCare</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap');
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Source Sans 3', sans-serif;
+    background: linear-gradient(180deg, #CE7E5A 0%, #B76B49 100%);
+    color: #4A2E10;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+  }
+  header {
+    text-align: center;
+    padding: 20px 16px 8px;
+  }
+  h1 {
+    margin: 0;
+    font-size: 26px;
+    color: #F9E7B2;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  }
+  #breath-cue {
+    margin-top: 6px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #FDF6E3;
+    min-height: 26px;
+  }
+  #stats {
+    font-size: 14px;
+    color: #66321F;
+    background: #F9E7B2;
+    border-radius: 20px;
+    padding: 4px 16px;
+    margin-top: 6px;
+  }
+  #stage {
+    position: relative;
+    width: 100%;
+    flex: 1;
+    overflow: hidden;
+  }
+  .bubble {
+    position: absolute;
+    bottom: -80px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.85), rgba(249,231,178,0.55) 60%, rgba(249,231,178,0.15) 100%);
+    border: 1px solid rgba(255,255,255,0.6);
+    cursor: pointer;
+    animation-name: rise;
+    animation-timing-function: linear;
+  }
+  @keyframes rise {
+    from { transform: translateY(0); }
+    to { transform: translateY(-115vh); }
+  }
+  .pop {
+    position: absolute;
+    pointer-events: none;
+    border-radius: 50%;
+    background: rgba(249,231,178,0.9);
+    animation: popfx 0.35s ease-out forwards;
+  }
+  @keyframes popfx {
+    from { transform: scale(0.6); opacity: 1; }
+    to { transform: scale(1.8); opacity: 0; }
+  }
+  footer {
+    padding: 14px;
+    font-size: 13px;
+    color: #F9E7B2;
+    opacity: 0.85;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🫧 Bubble Breather</h1>
+  <div id="breath-cue">Inhale...</div>
+  <div id="stats">Popped: <span id="count">0</span></div>
+</header>
+<div id="stage"></div>
+<footer>Pop bubbles gently as they rise, in time with your breath. Close this tab whenever you're ready.</footer>
+
+<script>
+  const stage = document.getElementById('stage');
+  const countEl = document.getElementById('count');
+  const cueEl = document.getElementById('breath-cue');
+  let popped = 0;
+
+  const cues = ["Inhale...", "Hold...", "Exhale..."];
+  let cueIdx = 0;
+  setInterval(() => {
+    cueIdx = (cueIdx + 1) % cues.length;
+    cueEl.textContent = cues[cueIdx];
+  }, 4000);
+
+  function spawnBubble() {
+    const size = 40 + Math.random() * 70;
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.style.width = size + 'px';
+    bubble.style.height = size + 'px';
+    bubble.style.left = Math.random() * (window.innerWidth - size) + 'px';
+    const duration = 7 + Math.random() * 5;
+    bubble.style.animationDuration = duration + 's';
+
+    bubble.addEventListener('click', () => {
+      const rect = bubble.getBoundingClientRect();
+      const fx = document.createElement('div');
+      fx.className = 'pop';
+      fx.style.width = rect.width + 'px';
+      fx.style.height = rect.height + 'px';
+      fx.style.left = rect.left + 'px';
+      fx.style.top = rect.top + 'px';
+      document.body.appendChild(fx);
+      setTimeout(() => fx.remove(), 400);
+
+      bubble.remove();
+      popped += 1;
+      countEl.textContent = popped;
+    });
+
+    bubble.addEventListener('animationend', () => bubble.remove());
+    stage.appendChild(bubble);
+  }
+
+  setInterval(spawnBubble, 900);
+  for (let i = 0; i < 3; i++) setTimeout(spawnBubble, i * 300);
+</script>
+</body>
+</html>
