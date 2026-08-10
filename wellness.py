@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import cv2
-import time
 from cProfile import label
 import streamlit as st
 import os
 import re
+import time
 import textwrap
 from datetime import datetime
 from typing import Optional
@@ -18,22 +17,6 @@ import matplotlib.pyplot as plt
 from wordcloud import WordCloud
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 import numpy as np
-
-try:
-    import soundfile as sf
-    SOUNDFILE_OK = True
-except Exception:
-    sf = None
-    SOUNDFILE_OK = False
-
-from tempfile import NamedTemporaryFile
-
-try:
-    import sounddevice as sd
-    SOUNDDEVICE_OK = True
-except Exception:
-    sd = None
-    SOUNDDEVICE_OK = False
 
 try:
     from elevenlabs.client import ElevenLabs
@@ -122,10 +105,8 @@ EXTRA_COMPASS_LINES = [
     ("Impatient", "Reflect on progress – you're further than you feel 🧭"),
 ]
 
-
 def render_action_compass(current_mood: str):
-    st.markdown("#### 🌈 Action Compass")
-    st.caption("  Just a gentle nudge, not a rule 🌱")
+    st.caption("Just a gentle nudge, not a rule 🌱")
 
     ACTIONS = [
         ("Angry", "🎵 Sing it out – let the heat leave softly"),
@@ -151,10 +132,73 @@ def render_action_compass(current_mood: str):
             unsafe_allow_html=True,
         )
 
+# ------------------ Mini Games: open standalone HTML games hosted on GitHub Pages ------------------
+# These files live in the /docs/games/ folder of your GitHub repo. GitHub Pages
+# serves that folder as real https:// pages, which open reliably in a new tab —
+# unlike data: URIs, which some Chrome builds/extensions block or mangle.
+GAMES_BASE_URL = "https://soumyabhate.github.io/emocare-wellness-bot-jetson-nano/games"
 
-# ------------------ Mini-game: Calm Quest ------------------
+MINI_GAMES = [
+    {
+        "id": "bubble_pop",
+        "label": "🫧 Bubble Breather",
+        "blurb": "Pop rising bubbles in time with your breath.",
+        "file": "bubble_pop.html",
+    },
+    {
+        "id": "gratitude_jar",
+        "label": "🍯 Gratitude Jar",
+        "blurb": "Collect tiny gratitudes in a jar.",
+        "file": "gratitude_jar.html",
+    },
+    {
+        "id": "grounding_senses",
+        "label": "🌬️ Grounding: 5 Senses",
+        "blurb": "Anchor into the present, one sense at a time.",
+        "file": "grounding_senses.html",
+    },
+    {
+        "id": "doodle_pad",
+        "label": "🎨 Doodle Pad",
+        "blurb": "No goal — just let your hand move.",
+        "file": "doodle_pad.html",
+    },
+]
+
+
+def render_mini_games_grid():
+    st.caption("Or try one of these — opens in a new tab, come back anytime:")
+    rows = [MINI_GAMES[i:i + 2] for i in range(0, len(MINI_GAMES), 2)]
+    for row in rows:
+        cols = st.columns(len(row))
+        for col, game in zip(cols, row):
+            with col:
+                url = f"{GAMES_BASE_URL}/{game['file']}"
+                st.markdown(
+                    f"""
+                    <a href="{url}" target="_blank" rel="noopener noreferrer"
+                       style="text-decoration:none;">
+                        <div style="background:#F9E7B2;color:#4A2E10;
+                                    border-radius:10px;padding:10px 12px;
+                                    text-align:center;font-weight:700;
+                                    border:1px solid #D9BC7D;">
+                            {game['label']}
+                        </div>
+                    </a>
+                    <div style="font-size:12px;color:#F9E7B2;text-align:center;
+                                margin-top:4px;margin-bottom:14px;opacity:0.85;">
+                        {game['blurb']}
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+
+
+
 def run_calm_quest():
-    st.markdown("## 🎮 Calm Quest (60 seconds)")
+    # ------------------ Calm Quest (existing 60s mini-game) ------------------
+    st.markdown("#### Calm Quest")
     st.caption("A tiny reset for your mind + body. You can stop anytime.")
 
     if st.button("🛑 End Calm Quest", use_container_width=True):
@@ -304,6 +348,7 @@ def load_css(file_name="wellness.css"):
     except FileNotFoundError:
         st.warning(f"CSS file '{file_name}' not found. Using default styling.")
 
+
 load_css()
 
 # ---------- ENV & CLIENTS ----------
@@ -320,7 +365,6 @@ if ELEVENLABS_API_KEY and ElevenLabs:
     except Exception as e:
         st.warning(f"ElevenLabs client initialization failed. Voice features disabled. ({e})")
         elevenlabs_client = None
-
 
 # ---------- LLM helpers ----------
 def getTextLLM_system(system_prompt, user_text):
@@ -340,7 +384,6 @@ def getTextLLM_system(system_prompt, user_text):
         return completion.choices[0].message.content
     except Exception as e:
         return f"LLM Error: Could not generate response. ({e})"
-
 
 # ---------- Crisis detection & Core wellness response ----------
 CRISIS_KEYWORDS = [
@@ -404,7 +447,6 @@ Tone & style:
     response = getTextLLM_system(system_prompt, user_input)
     return response, []
 
-
 # ---------- PDF processing helpers ----------
 def extract_text_from_pdf(file) -> str:
     try:
@@ -455,60 +497,44 @@ def generate_wordcloud(text: str):
     except Exception as e:
         st.error(f"Error generating word cloud: {str(e)}")
 
-
 # ---------- AUDIO HELPERS (voice mode) ----------
-def record_voice_to_wav(seconds: int = 10, sample_rate: int = 16000) -> Optional[str]:
-    if (not SOUNDDEVICE_OK) or (not SOUNDFILE_OK):
-        st.error("Voice recording isn't available in this environment.")
-        return None
 
-    try:
-        if st.session_state.get('recording_active', False):
-            sd.stop()
-            st.session_state.recording_active = False
-            return st.session_state.get('current_recording_path')
+def elevenlabs_stt(audio_source) -> str:
+    """
+    Speech-to-text using ElevenLabs.
 
-        st.info("🎙️ Recording... please speak.")
-        sd.stop()
-
-        st.session_state.recording_active = True
-
-        audio = sd.rec(int(seconds * sample_rate),
-                       samplerate=sample_rate,
-                       channels=1,
-                       device=st.session_state.get("audio_input_device", None))
-        sd.wait()
-
-        st.session_state.recording_active = False
-        audio = np.squeeze(audio)
-
-        tmp = NamedTemporaryFile(suffix=".wav", delete=False)
-        sf.write(tmp.name, audio, sample_rate)
-        st.session_state.current_recording_path = tmp.name
-        return tmp.name
-
-    except Exception as e:
-        st.session_state.recording_active = False
-        st.error(f"Recording failed: {e}")
-        return None
-
-
-def elevenlabs_stt(wav_path: str) -> str:
+    audio_source can be:
+      - a file path (str) — legacy/local-mic path
+      - a file-like object (e.g. the value returned by st.audio_input, or
+        an UploadedFile) — used for browser-based recording, which works
+        on Streamlit Cloud with no local hardware required.
+    """
     if not elevenlabs_client:
         st.warning("STT not configured (ElevenLabs client unavailable).")
         return ""
 
-    if not os.path.exists(wav_path):
-        st.error(f"Audio file not found: {wav_path}")
-        return ""
-
     try:
-        with open(wav_path, "rb") as f:
+        if isinstance(audio_source, str):
+            if not os.path.exists(audio_source):
+                st.error(f"Audio file not found: {audio_source}")
+                return ""
+            file_obj = open(audio_source, "rb")
+            should_close = True
+        else:
+            # file-like object (BytesIO / UploadedFile from st.audio_input)
+            audio_source.seek(0)
+            file_obj = audio_source
+            should_close = False
+
+        try:
             transcription_obj = elevenlabs_client.speech_to_text.convert(
-                file=f,
+                file=file_obj,
                 model_id="scribe_v1",
                 language_code="en",
             )
+        finally:
+            if should_close:
+                file_obj.close()
 
         if hasattr(transcription_obj, "text"):
             transcribed_text = transcription_obj.text.strip()
@@ -528,32 +554,37 @@ def elevenlabs_stt(wav_path: str) -> str:
 
 
 def elevenlabs_tts_bytes(text: str) -> bytes:
+    """
+    FIXED: Text-to-speech using ElevenLabs with proper stream handling.
+    """
     if not elevenlabs_client:
         st.warning("TTS not configured (ElevenLabs client unavailable).")
         return b""
-
+    
     if not text.strip():
         return b""
-
+    
     try:
         audio_result = elevenlabs_client.text_to_speech.convert(
             text=text,
-            voice_id="pNInz6obpgDQGcFmaJgB",
+            voice_id="pNInz6obpgDQGcFmaJgB", 
             model_id="eleven_multilingual_v2",
             output_format="mp3_44100_128",
         )
-
+        
+        # CRITICAL FIX: Handle both bytes and generator streams
         if isinstance(audio_result, bytes):
             audio_bytes = audio_result
         else:
+            # Join chunks from generator
             audio_bytes = b"".join(chunk for chunk in audio_result)
-
+        
         if not audio_bytes:
             st.warning("TTS returned empty audio.")
             return b""
-
+            
         return audio_bytes
-
+        
     except Exception as e:
         st.error(f"TTS error: {e}")
         import traceback
@@ -590,28 +621,8 @@ if "calm_quest_need" not in st.session_state:
     st.session_state.calm_quest_need = ""
 if "last_joke" not in st.session_state:
     st.session_state.last_joke = ""
-if "last_voice_wav_path" not in st.session_state:
-    st.session_state.last_voice_wav_path = None
-if "voice_ready_to_send" not in st.session_state:
-    st.session_state.voice_ready_to_send = False
-if "recording_active" not in st.session_state:
-    st.session_state.recording_active = False
-if "current_recording_path" not in st.session_state:
-    st.session_state.current_recording_path = None
-if "audio_input_device" not in st.session_state:
-    st.session_state.audio_input_device = None
-if "audio_output_device" not in st.session_state:
-    st.session_state.audio_output_device = None
-if "audio_applied" not in st.session_state:
-    st.session_state.audio_applied = False
-if "camera_on" not in st.session_state:
-    st.session_state.camera_on = False
-if "frame_count" not in st.session_state:
-    st.session_state.frame_count = 0
-if "last_emotion" not in st.session_state:
-    st.session_state.last_emotion = None
-if "last_conf" not in st.session_state:
-    st.session_state.last_conf = 0.0
+if "last_processed_audio_hash" not in st.session_state:
+    st.session_state.last_processed_audio_hash = None
 
 
 # ---------- SIDEBAR ----------
@@ -681,7 +692,6 @@ with st.sidebar:
         st.session_state.uploaded_pdf_text = None
         st.session_state.pdf_filename = None
 
-
 # ================== MAIN CONTENT: CENTER + RIGHT PANEL ==================
 center_col, right_col = st.columns([2.7, 1.0], gap="large")
 
@@ -705,8 +715,10 @@ with center_col:
         unsafe_allow_html=True,
     )
 
-    # ---- Mini Game ----
-    st.markdown("#### 🎮 Mini Game")
+    # ---- Games ----
+    st.markdown("### 🎮 Games")
+
+    st.markdown("**Calm Quest** — a 60-second guided reset")
     if not st.session_state.calm_quest_active:
         if st.button(
             "Start Calm Quest (60s)",
@@ -719,6 +731,9 @@ with center_col:
             st.rerun()
     else:
         run_calm_quest()
+
+    st.markdown("")
+    render_mini_games_grid()
 
     st.markdown("---")
 
@@ -742,164 +757,6 @@ with center_col:
 
     st.markdown("---")
 
-    # ------------------ CAMERA SECTION ------------------
-    st.subheader("📷 Camera (Face Box + Emotion)")
-
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Start Camera (10s)", key="start_camera_btn"):
-            st.session_state.camera_on = True
-    with col2:
-        if st.button("Stop Camera", key="stop_camera_btn"):
-            st.session_state.camera_on = False
-
-    frame_placeholder = st.empty()
-    status_placeholder = st.empty()
-
-    if st.session_state.camera_on:
-        yunet_path = "models/face_detection_yunet_2023mar.onnx"
-        emotion_model_path = "models/emotion-ferplus-8.onnx"
-
-        if not os.path.exists(yunet_path):
-            st.error(f"YuNet model file not found: {yunet_path}")
-            st.info("Place the file at: models/face_detection_yunet_2023mar.onnx")
-        elif not os.path.exists(emotion_model_path):
-            st.error(f"Emotion model file not found: {emotion_model_path}")
-            st.info("Place the file at: models/emotion-ferplus-8.onnx")
-        else:
-            # Use V4L2 backend (often more reliable on Jetson for USB webcams)
-            cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
-
-            # Reduce load for smoother preview
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-
-            # Ask webcam for MJPG (often faster)
-            try:
-                cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-            except Exception:
-                pass
-
-            # Reduce buffering lag (not supported on all builds, safe to try)
-            try:
-                cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-            except Exception:
-                pass
-
-            if not cap.isOpened():
-                st.error("Could not open webcam. Check Docker device access (/dev/video0).")
-            else:
-                detector = cv2.FaceDetectorYN.create(
-                    yunet_path, "",
-                    (320, 320),
-                    score_threshold=0.7,
-                    nms_threshold=0.3,
-                    top_k=5000
-                )
-
-                # Emotion model (FER+)
-                emotion_net = cv2.dnn.readNetFromONNX(emotion_model_path)
-                emotion_labels = [
-                    "neutral",
-                    "happiness",
-                    "surprise",
-                    "sadness",
-                    "anger",
-                    "disgust",
-                    "fear",
-                    "contempt"
-                ]
-
-                start_time = time.time()
-                status_placeholder.info("Camera running for 10 seconds...")
-
-                while st.session_state.camera_on and (time.time() - start_time < 10):
-                    ret, frame = cap.read()
-                    if not ret or frame is None:
-                        st.warning("Failed to read frame from webcam.")
-                        break
-
-                    # Always increment frame count
-                    st.session_state.frame_count += 1
-                    do_emotion = (st.session_state.frame_count % 5 == 0)  # every 5th frame
-
-                    # --- Face detection (always) ---
-                    h, w = frame.shape[:2]
-                    detector.setInputSize((w, h))
-                    _, faces = detector.detect(frame)
-
-                    # Draw face boxes (always, if any)
-                    best_face = None  # (x,y,bw,bh) of largest face
-                    if faces is not None:
-                        boxes = [tuple(map(int, f[:4])) for f in faces]
-                        for (x, y, bw, bh) in boxes:
-                            cv2.rectangle(frame, (x, y), (x + bw, y + bh), (0, 255, 0), 2)
-
-                        best_face = max(boxes, key=lambda b: b[2] * b[3])
-
-                    # --- Emotion inference (throttled) ---
-                    detected_emotion = None
-                    emotion_conf = 0.0
-
-                    if do_emotion and best_face is not None:
-                        x, y, bw, bh = best_face
-
-                        # Clamp crop area
-                        x0 = max(0, x)
-                        y0 = max(0, y)
-                        x1 = min(w, x + bw)
-                        y1 = min(h, y + bh)
-
-                        face = frame[y0:y1, x0:x1]
-                        if face.size > 0:
-                            gray = cv2.cvtColor(face, cv2.COLOR_BGR2GRAY)
-                            cv2.imwrite("temp_full_face.jpg", gray)
-                            gray = cv2.resize(gray, (64, 64))
-                            cv2.imwrite("temp_cropped_face.jpg", gray)
-                            
-                            print("min/max range:", np.min(gray), np.max(gray))
-                            blob = gray.astype("float32").reshape(1, 1, 64, 64)
-                            
-                            
-                            emotion_net.setInput(blob)
-                            scores = emotion_net.forward().reshape(-1)
-
-                            # softmax
-                            exp = np.exp(scores - np.max(scores))
-                            probs = exp / exp.sum()
-
-                            idx = int(np.argmax(probs))
-                            detected_emotion = emotion_labels[idx]
-                            emotion_conf = float(probs[idx])
-
-                            # store last known emotion so UI can display even between inference frames
-                            st.session_state.last_emotion = detected_emotion
-                            st.session_state.last_conf = emotion_conf
-
-                    # Put emotion label (always show last known)
-                    if st.session_state.last_emotion:
-                        label_txt = f"{st.session_state.last_emotion} ({st.session_state.last_conf:.2f})"
-                        cv2.putText(
-                            frame, label_txt,
-                            (10, 30),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.8,
-                            (0, 255, 255),
-                            2
-                        )
-
-                    # Show frame (BGR is fine if you pass channels="BGR")
-                    frame_placeholder.image(frame, channels="BGR")
-
-                    # small sleep to avoid maxing CPU
-                    time.sleep(0.03)
-
-                cap.release()
-                st.session_state.camera_on = False
-                status_placeholder.success("Camera session complete (5 seconds).")
-
-    st.markdown("---")
-
     # ================= CONVERSATION HISTORY =================
     st.subheader("💬 Conversation History")
     if st.session_state.conversation_history:
@@ -920,14 +777,11 @@ with center_col:
     with c1:
         if st.button("✏️ Text Mode", use_container_width=True):
             st.session_state.input_mode = "text"
-            st.session_state.voice_ready_to_send = False
-            st.session_state.recording_active = False
-            st.session_state.current_recording_path = None
 
     with c2:
         if st.button("🎤 Voice Mode", use_container_width=True):
             st.session_state.input_mode = "voice"
-
+            
     st.markdown("---")
 
     # ================= TEXT MODE =================
@@ -976,129 +830,81 @@ with center_col:
             else:
                 st.warning("Please type something before sending.")
 
-    # ================= VOICE MODE =================
+    # ================= VOICE MODE (browser microphone — works on Streamlit Cloud) =================
     else:
-        if not SOUNDDEVICE_OK:
+        if not elevenlabs_client:
+            st.error("🎙️ Voice mode is disabled: ElevenLabs API Key is missing or invalid.")
+        else:
             st.info(
-                "🎙️ Voice recording (microphone) is disabled on Streamlit Cloud.\n\n"
-                "You can still use **Text Mode** or upload audio files in future versions."
+                "Voice mode: click the mic, speak, click stop — EmoCare will listen, "
+                "transcribe, and respond. This uses your browser's microphone, so it "
+                "works on Streamlit Cloud with no extra hardware."
             )
-            st.stop()
-        if not st.session_state.recording_active:
-            if not elevenlabs_client:
-                st.error("🎙️ Voice mode is disabled: ElevenLabs API Key is missing or invalid.")
-            else:
-                st.info(
-                    "Voice mode: EmoCare will listen, transcribe, and respond.\n"
-                    "Requires a functioning microphone and sounddevice configuration."
-                )
 
-        record_seconds = st.slider(
-            "Recording duration (seconds)",
-            5, 60, 10,
-            disabled=st.session_state.recording_active or not elevenlabs_client
+        audio_value = st.audio_input(
+            "🎙️ Record your message",
+            disabled=not elevenlabs_client,
+            key="voice_input_widget",
         )
 
-        col_rec, col_send = st.columns(2)
+        if audio_value is not None:
+            st.audio(audio_value)
 
-        with col_rec:
-            if st.session_state.recording_active:
-                if st.button("⏹️ Stop Recording", type="secondary", use_container_width=True, disabled=not elevenlabs_client):
-                    sd.stop()
-                    st.session_state.recording_active = False
-                    if st.session_state.get('current_recording_path'):
-                        st.session_state.voice_ready_to_send = True
-                        st.success("Recording finished. You can now listen and send.")
-                    else:
-                        st.session_state.voice_ready_to_send = False
-                        st.warning("Recording was too short or failed to capture audio.")
-                        path_to_clean = st.session_state.get('current_recording_path')
-                        if path_to_clean and os.path.exists(path_to_clean):
-                            os.remove(path_to_clean)
-                        st.session_state.current_recording_path = None
-                    st.rerun()
-            else:
-                if st.button("🎙️ Record Voice", type="primary", use_container_width=True, disabled=not elevenlabs_client):
-                    if not elevenlabs_client:
-                        st.error("Cannot start recording. ElevenLabs client not initialized.")
-                    else:
-                        st.session_state.last_voice_wav_path = None
-                        st.session_state.voice_ready_to_send = False
+            # Avoid re-processing the same recording on every rerun
+            audio_bytes_for_hash = audio_value.getvalue()
+            audio_hash = hash(audio_bytes_for_hash)
 
-                        wav_path = record_voice_to_wav(record_seconds)
+            already_sent = st.session_state.get("last_processed_audio_hash") == audio_hash
 
-                        if wav_path:
-                            st.session_state.last_voice_wav_path = wav_path
-                            st.session_state.voice_ready_to_send = True
-                            st.session_state.recording_active = False
-                            st.success("Recording complete. Review it below, then press Send Voice.")
-
-                        st.rerun()
-
-        with col_send:
             if st.button(
                 "📤 Send Voice",
                 use_container_width=True,
-                disabled=not st.session_state.voice_ready_to_send or not elevenlabs_client,
+                disabled=not elevenlabs_client or already_sent,
             ):
-                if not elevenlabs_client:
-                    st.error("Cannot send. ElevenLabs client not initialized.")
-                elif not st.session_state.last_voice_wav_path:
-                    st.warning("No recording found. Please record first.")
+                with st.spinner("Transcribing your voice..."):
+                    transcribed = elevenlabs_stt(audio_value)
+
+                if not transcribed:
+                    st.warning("I couldn't understand the audio. Please try speaking louder and clearer.")
                 else:
-                    wav_path = st.session_state.last_voice_wav_path
+                    st.success(f"Transcribed: {transcribed}")
 
-                    with st.spinner("Transcribing your voice..."):
-                        transcribed = elevenlabs_stt(wav_path)
+                    st.session_state.conversation_history.append(
+                        {
+                            "role": "user",
+                            "text": transcribed,
+                            "timestamp": datetime.now().isoformat(),
+                        }
+                    )
 
-                    if not transcribed:
-                        st.warning("I couldn't understand the audio. Please try speaking louder and clearer.")
-                    else:
-                        st.success(f"Transcribed: {transcribed}")
-
-                        st.session_state.conversation_history.append(
-                            {
-                                "role": "user",
-                                "text": transcribed,
-                                "timestamp": datetime.now().isoformat(),
-                            }
+                    with st.spinner(
+                        f"EmoCare ({st.session_state.selected_avatar}) is thinking..."
+                    ):
+                        response_text, _ = get_wellness_response(
+                            transcribed,
+                            st.session_state.focus_area,
+                            st.session_state.current_mood,
+                            journal_text=st.session_state.uploaded_pdf_text,
                         )
 
-                        with st.spinner(
-                            f"EmoCare ({st.session_state.selected_avatar}) is thinking..."
-                        ):
-                            response_text, _ = get_wellness_response(
-                                transcribed,
-                                st.session_state.focus_area,
-                                st.session_state.current_mood,
-                                journal_text=st.session_state.uploaded_pdf_text,
-                            )
+                    st.session_state.conversation_history.append(
+                        {
+                            "role": "assistant",
+                            "text": response_text,
+                            "timestamp": datetime.now().isoformat(),
+                            "used_pdf": bool(st.session_state.uploaded_pdf_text),
+                        }
+                    )
 
-                        st.session_state.conversation_history.append(
-                            {
-                                "role": "assistant",
-                                "text": response_text,
-                                "timestamp": datetime.now().isoformat(),
-                                "used_pdf": bool(st.session_state.uploaded_pdf_text),
-                            }
-                        )
+                    if st.session_state.use_tts and elevenlabs_client:
+                        audio_bytes = elevenlabs_tts_bytes(response_text)
+                        if audio_bytes:
+                            st.audio(audio_bytes, format="audio/mp3")
 
-                        if st.session_state.use_tts and elevenlabs_client:
-                            audio_bytes = elevenlabs_tts_bytes(response_text)
-                            if audio_bytes:
-                                st.audio(audio_bytes, format="audio/mp3")
-
-                    if os.path.exists(wav_path):
-                        os.remove(wav_path)
-
-                    st.session_state.last_voice_wav_path = None
-                    st.session_state.voice_ready_to_send = False
-                    st.session_state.current_recording_path = None
-
+                    st.session_state.last_processed_audio_hash = audio_hash
                     st.rerun()
-
-        if st.session_state.voice_ready_to_send and st.session_state.last_voice_wav_path:
-            st.audio(st.session_state.last_voice_wav_path, format="audio/wav")
+        else:
+            st.caption("Tap the mic above to record. Recording stays in your browser until you press Send.")
 
     st.caption(
         "⚠️ This is just a wellness companion. It should not be used for therapy or any explicit interactions. For serious mental health concerns, please seek professional help or consult with a doctor."
@@ -1106,98 +912,17 @@ with center_col:
 
 # ------------------ RIGHT PANEL ------------------
 with right_col:
-    render_action_compass(st.session_state.current_mood)
-    st.markdown("---")
+    with st.expander("🌈 Action Compass", expanded=True):
+        render_action_compass(st.session_state.current_mood)
 
-    st.markdown("#### 🔊 Audio Preferences")
+    st.markdown("")
 
-    st.session_state.use_tts = st.checkbox(
-        "Play responses as audio (TTS)",
-        value=st.session_state.use_tts,
-        disabled=not bool(elevenlabs_client),
-        help="Requires ElevenLabs API Key for TTS.",
-    )
+    with st.expander("🔊 Audio Preferences", expanded=False):
+        st.session_state.use_tts = st.checkbox(
+            "Play responses as audio (TTS)",
+            value=st.session_state.use_tts,
+            disabled=not bool(elevenlabs_client),
+            help="Requires ElevenLabs API Key for TTS.",
+        )
 
-    st.caption("A calming voice assistant 🫂")
-    st.markdown("---")
-
-    st.markdown("#### 🎛️ Mic & Speaker Selection")
-
-    try:
-        devices = sd.query_devices()
-
-        input_choices = []
-        output_choices = []
-
-        for i, d in enumerate(devices):
-            name = d.get("name", f"Device {i}")
-            in_ch = int(d.get("max_input_channels", 0) or 0)
-            out_ch = int(d.get("max_output_channels", 0) or 0)
-
-            if in_ch > 0:
-                input_choices.append((i, f"{i}: {name} (in: {in_ch})"))
-            if out_ch > 0:
-                output_choices.append((i, f"{i}: {name} (out: {out_ch})"))
-
-        def _idx_for(saved_device_id, choices):
-            if saved_device_id is None:
-                return 0
-            for idx, (dev_id, _) in enumerate(choices):
-                if dev_id == saved_device_id:
-                    return idx
-            return 0
-
-        selected_in = None
-        if not input_choices:
-            st.warning("No microphone (input) devices detected.")
-        else:
-            selected_in = st.selectbox(
-                "🎙️ Select Microphone (Input)",
-                options=input_choices,
-                format_func=lambda x: x[1],
-                index=_idx_for(st.session_state.audio_input_device, input_choices),
-                key="mic_select_rightpanel",
-            )
-
-        selected_out = None
-        if not output_choices:
-            st.warning("No speaker/headphone (output) devices detected.")
-        else:
-            selected_out = st.selectbox(
-                "🔊 Select Speaker/Headphones (Output)",
-                options=output_choices,
-                format_func=lambda x: x[1],
-                index=_idx_for(st.session_state.audio_output_device, output_choices),
-                key="speaker_select_rightpanel",
-            )
-
-        c_apply, c_info = st.columns(2)
-
-        with c_apply:
-            if st.button("✅ Apply Devices", use_container_width=True, key="apply_audio_devices"):
-                in_id = selected_in[0] if selected_in else None
-                out_id = selected_out[0] if selected_out else None
-
-                st.session_state.audio_input_device = in_id
-                st.session_state.audio_output_device = out_id
-
-                current_in, current_out = sd.default.device if isinstance(sd.default.device, (list, tuple)) else (None, None)
-                sd.default.device = (
-                    in_id if in_id is not None else current_in,
-                    out_id if out_id is not None else current_out,
-                )
-
-                st.session_state.audio_applied = True
-                st.success(f"Applied → Input: {in_id} | Output: {out_id}")
-
-        with c_info:
-            with st.expander("📋Listed Devices"):
-                st.write(devices)
-                try:
-                    st.caption(f"Current sd.default.device = {sd.default.device}")
-                except Exception:
-                    pass
-
-    except Exception as e:
-        st.info("Audio device selection may not work on Streamlit Cloud or without audio permissions.")
-        st.caption(f"Details: {e}")
+    st.caption("A calming voice assistant 🫂 — recording uses your browser's mic, playback uses your browser's speakers. No device setup needed.")
