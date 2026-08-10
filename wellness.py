@@ -136,7 +136,7 @@ def render_action_compass(current_mood: str):
 # These files live in the /docs/games/ folder of your GitHub repo. GitHub Pages
 # serves that folder as real https:// pages, which open reliably in a new tab —
 # unlike data: URIs, which some Chrome builds/extensions block or mangle.
-GAMES_BASE_URL = "https://soumyabhate19.github.io/emocare-wellness-bot-jetson-nano/docs/games"
+GAMES_BASE_URL = "https://soumyabhate19.github.io/emocare-wellness-bot-jetson-nano/docs"
 
 MINI_GAMES = [
     {
