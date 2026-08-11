@@ -1,5 +1,5 @@
 /* ========== EmoCare Minimal Theme CSS ========== */
-@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700&family=Pacifico&display=swap');
 
 html, body, .stApp { height: 100%; }
 
@@ -542,5 +542,22 @@ section[data-testid="stCheckbox"] label {
   .emocare-contact-icon {
     width: 28px !important;
     height: 28px !important;
+  }
+}
+
+/* ================= TITLE (EmoCare) ================= */
+/* Pacifico script font, larger size, no emojis — general app font
+   (Source Sans 3) is untouched everywhere else. */
+.emocare-title {
+  font-family: 'Pacifico', cursive !important;
+  font-size: 3.2rem !important;
+  color: #F9E7B2 !important;
+  line-height: 1.2 !important;
+  margin: 0.2rem 0 0.4rem !important;
+}
+
+@media (max-width: 640px) {
+  .emocare-title {
+    font-size: 2.4rem !important;
   }
 }
