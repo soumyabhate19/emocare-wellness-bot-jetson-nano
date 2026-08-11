@@ -321,7 +321,7 @@ def run_calm_quest():
             <div style="background:#F9E7B2;color:#4A2E10;border-radius:14px;
                         padding:18px 22px;text-align:center;margin-bottom:16px;">
                 <div style="font-size:20px;font-weight:800;">💛 Hope you feel better now.</div>
-                <div style="font-size:14px;margin-top:6px;">You showed up for yourself today — that counts.</div>
+                <div style="font-size:14px;margin-top:6px;">You showed up for yourself today, that counts.</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -961,7 +961,7 @@ with center_col:
     # ---- Dinosaur Run (embedded inline, not a new tab) ----
     st.markdown('<div id="dino-section"></div>', unsafe_allow_html=True)
     st.markdown("### 🦖 Dinosaur Run")
-    st.caption("The classic offline dino game — jump the cacti, don't stop running.")
+    st.caption("The classic offline dino game, jump the cacti, don't stop running.")
     render_dino_run()
 
     st.markdown("---")
