@@ -523,3 +523,24 @@ section[data-testid="stCheckbox"] label {
     padding: 16px 18px;
   }
 }
+
+/* ================= CONTACT ROW ICONS ================= */
+/* Bigger icons on both desktop and mobile. */
+.emocare-contact-icon {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+/* Mobile: icons only, no text labels — just clickable icon buttons. */
+@media (max-width: 640px) {
+  .emocare-contact-label {
+    display: none !important;
+  }
+  .emocare-contact-row {
+    gap: 34px !important;
+  }
+  .emocare-contact-icon {
+    width: 28px !important;
+    height: 28px !important;
+  }
+}
