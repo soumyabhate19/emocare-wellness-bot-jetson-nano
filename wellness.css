@@ -85,6 +85,18 @@ section[data-testid="stSidebar"] [data-testid="stSelectbox"] svg {
   fill: #F9E7B2 !important;
 }
 
+/* THE ACTUAL BUG, confirmed via DevTools: the wildcard rule
+   [data-testid="stSelectbox"] * (used for background/color/fill further
+   up) also matches the icon's inner <path> elements — including the
+   INVISIBLE bounding-box path (fill="none", a 24x24 square). The
+   wildcard's "fill: ... !important" overrides that fill="none"
+   attribute, turning the invisible bounding box into a solid filled
+   square — which is the "white/cream box" that kept appearing. This
+   restores that specific path to genuinely invisible. */
+[data-testid="stSelectbox"] svg path[fill="none"] {
+  fill: none !important;
+}
+
 div[data-baseweb="select"] > div {
   background: #F9E7B2 !important;
   border: 1px solid #D9BC7D !important;
