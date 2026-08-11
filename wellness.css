@@ -63,7 +63,9 @@ li, a, small, strong, em {
    visible arrow correctly inherit it via SVG's normal fill inheritance,
    while the OTHER path's own explicit fill="none" attribute stays
    untouched (a direct attribute on an element always beats an inherited
-   value, so this doesn't make that invisible bounding box show up). */
+   value, so this doesn't make that invisible bounding box show up).
+   THIS RULE WAS MISSING FROM THE DEPLOYED FILE — that's why the fix
+   didn't show up. */
 [data-testid="stSelectbox"] svg {
   fill: #4A2E10 !important;
   background: transparent !important;
