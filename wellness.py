@@ -1098,7 +1098,7 @@ with center_col:
                 <div style="display:flex;justify-content:space-between;
                             flex-wrap:wrap;gap:8px;color:#FDF6E3;
                             font-size:13px;opacity:0.85;padding:0 4px;">
-                    <span>Baltimore, MD</span>
+                    <span>Boston, MD</span>
                     <span>Soumya Bhate · EmoCare © 2026</span>
                 </div>
             </div>
