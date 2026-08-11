@@ -463,19 +463,22 @@ section[data-testid="stCheckbox"] label {
 }
 
 /* ================= MOBILE / TABLET RESPONSIVENESS ================= */
-/* The fixed Action Compass panel (260px, floating on the right) works
-   fine on desktop but eats a huge share of a phone/tablet's width and
-   can overlap content. Below 900px, drop it out of "fixed" mode entirely
-   and let it sit as a normal full-width card in the page flow instead. */
+/* Two separate copies of Action Compass exist in the page:
+   .emocare-compass-desktop (fixed, floating on the right) and
+   .emocare-compass-mobile (normal flow, right after Conversation
+   History). CSS toggles which one is visible based on screen width —
+   only one is ever shown at a time. Desktop keeps the fixed panel
+   exactly as before; only mobile/tablet gets the in-flow version. */
+.emocare-compass-mobile {
+  display: none;
+}
+
 @media (max-width: 900px) {
-  .emocare-fixed-compass {
-    position: static !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    max-height: none !important;
-    margin: 1rem 0 !important;
-    right: auto !important;
-    top: auto !important;
+  .emocare-compass-desktop {
+    display: none !important;
+  }
+  .emocare-compass-mobile {
+    display: block !important;
   }
 }
 
