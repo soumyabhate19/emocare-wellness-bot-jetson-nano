@@ -1049,9 +1049,35 @@ with center_col:
             """
             <div style="text-align:center;padding:18px 10px 6px;">
                 <div style="display:flex;flex-wrap:wrap;justify-content:center;
-                            gap:26px;color:#F9E7B2;font-size:14px;margin-bottom:16px;">
-                    <span>💼 linkedin.com/in/soumyabhate19</span>
-                    <span>🐙 github.com/soumyabhate19</span>
+                            align-items:center;gap:26px;margin-bottom:16px;">
+
+                    <a href="mailto:soumyabhate19@gmail.com"
+                       style="display:flex;align-items:center;gap:7px;
+                              color:#F9E7B2;text-decoration:none;font-size:14px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M2 5.5A2.5 2.5 0 0 1 4.5 3h15A2.5 2.5 0 0 1 22 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-15A2.5 2.5 0 0 1 2 18.5v-13zm2.2.3 7.4 5.9a.7.7 0 0 0 .8 0l7.4-5.9a.6.6 0 0 0-.4-1.1H4.6a.6.6 0 0 0-.4 1.1z"/>
+                        </svg>
+                        soumyabhate19@gmail.com
+                    </a>
+
+                    <a href="https://linkedin.com/in/soumyabhate19" target="_blank" rel="noopener noreferrer"
+                       style="display:flex;align-items:center;gap:7px;
+                              color:#F9E7B2;text-decoration:none;font-size:14px;">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M14.82 0H1.18C.53 0 0 .53 0 1.18v13.64C0 15.47.53 16 1.18 16h13.64c.65 0 1.18-.53 1.18-1.18V1.18C16 .53 15.47 0 14.82 0zM4.75 13.4H2.4V6h2.35v7.4zM3.58 5.02a1.36 1.36 0 1 1 0-2.72 1.36 1.36 0 0 1 0 2.72zM13.6 13.4h-2.35V9.8c0-.86-.02-1.97-1.2-1.97-1.2 0-1.39.94-1.39 1.9v3.67H6.31V6h2.26v1.01h.03c.31-.59 1.08-1.2 2.22-1.2 2.38 0 2.82 1.57 2.82 3.6v3.99z"/>
+                        </svg>
+                        soumyabhate19
+                    </a>
+
+                    <a href="https://github.com/soumyabhate19" target="_blank" rel="noopener noreferrer"
+                       style="display:flex;align-items:center;gap:7px;
+                              color:#F9E7B2;text-decoration:none;font-size:14px;">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+                        </svg>
+                        soumyabhate19
+                    </a>
+
                 </div>
                 <hr style="border-color:rgba(249,231,178,0.3);margin:14px 0;">
                 <div style="display:flex;justify-content:space-between;
