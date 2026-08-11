@@ -3,9 +3,16 @@
 
 from cProfile import label
 import streamlit as st
+import streamlit.components.v1 as components
+try:
+    from streamlit_float import float_init
+    FLOAT_OK = True
+except ImportError:
+    FLOAT_OK = False
 import os
 import re
 import time
+import random
 import textwrap
 from datetime import datetime
 from typing import Optional
@@ -86,6 +93,14 @@ def render_music_recommendation(mood: str):
         st.markdown(f"👉 [Open playlist/search]({rec['url']})")
 
 
+def flatten_html(html: str) -> str:
+    """Strips leading whitespace from every line and joins into one line.
+    Markdown treats lines indented 4+ spaces as a code block (raw text,
+    not rendered HTML) — this avoids that entirely, regardless of how the
+    HTML is indented in the Python source for readability."""
+    return " ".join(line.strip() for line in html.strip().splitlines())
+
+
 # ------------------ RIGHT PANEL: Emotion -> Action Compass ------------------
 ACTION_COMPASS = [
     ("Angry / Frustrated", "Angry", "Sing it out – let the heat leave softly 🎵"),
@@ -132,11 +147,50 @@ def render_action_compass(current_mood: str):
             unsafe_allow_html=True,
         )
 
+
+def build_action_compass_fixed_html(current_mood: str) -> str:
+    """Builds the ENTIRE Action Compass panel (header, caption, all swatches)
+    as one combined HTML string, so it can be rendered via a single
+    st.markdown call wrapped in a position:fixed div with a direct inline
+    style — the same reliable pattern used for the navbar, avoiding any
+    dependency on Streamlit's own internal container selectors."""
+    ACTIONS = [
+        ("Angry", "🎵 Sing it out – let the heat leave softly"),
+        ("Stressed", "🏃 Move your body – even 60 seconds counts"),
+        ("Lonely", "💬 Send one message – connection starts small"),
+        ("Sad", "💛 Name one tiny gratitude – a warm ember"),
+        ("Calm", "🌿 Protect this calm – slow down on purpose"),
+        ("Happy", "✨ Celebrate it – dance, share, sparkle"),
+        ("Neutral", "🧘 Check in gently – what do you need right now?"),
+    ]
+    cm = (current_mood or "").lower()
+
+    swatches_html = ""
+    for mood, text in ACTIONS:
+        active = mood.lower() in cm
+        bg = "rgba(249,231,178,0.22)" if active else "rgba(249,231,178,0.10)"
+        swatches_html += f"""
+            <div style="background:{bg};border-radius:14px;padding:12px 14px;
+                        margin-bottom:10px;color:#F9E7B2;line-height:1.5;">
+              <b>{mood}</b> → {text}
+            </div>
+        """
+
+    return f"""
+        <div style="font-size:18px;font-weight:800;color:#F9E7B2;margin-bottom:4px;">
+            🌈 Action Compass
+        </div>
+        <div style="font-size:13px;color:#FDF6E3;opacity:0.85;margin-bottom:12px;">
+            Just a gentle nudge, not a rule 🌱
+        </div>
+        {swatches_html}
+    """
+
 # ------------------ Mini Games: open standalone HTML games hosted on GitHub Pages ------------------
 # These files live in the /docs/games/ folder of your GitHub repo. GitHub Pages
 # serves that folder as real https:// pages, which open reliably in a new tab —
 # unlike data: URIs, which some Chrome builds/extensions block or mangle.
-GAMES_BASE_URL = "https://soumyabhate19.github.io/emocare-wellness-bot-jetson-nano/games"
+GAMES_BASE_URL = "https://soumyabhate19.github.io/emocare-wellness-bot-jetson-nano"
 
 MINI_GAMES = [
     {
@@ -161,19 +215,25 @@ MINI_GAMES = [
         "id": "trace_animals",
         "label": "🖍️ Trace & Color",
         "blurb": "Trace animals, birds, flowers, and fruits in any color.",
-        "file": "trace_animals.html",
+        "file": "trace_it.html",
     },
     {
         "id": "doodle_pad",
         "label": "🎨 Doodle Pad",
-        "blurb": "Draw the prompt — a real AI guesses what you drew.",
+        "blurb": "Draw the prompt.",
         "file": "doodle_pad.html",
+    },
+    {
+        "id": "counting_stars",
+        "label": "✨ Counting Stars",
+        "blurb": "Tap each star before it fades.",
+        "file": "counting_stars.html",
     },
 ]
 
 
 def render_mini_games_grid():
-    st.caption("Or try one of these — opens in a new tab, come back anytime:")
+    st.caption("Or try one of these mini games")
     rows = [MINI_GAMES[i:i + 2] for i in range(0, len(MINI_GAMES), 2)]
     for row in rows:
         cols = st.columns(len(row))
@@ -200,140 +260,218 @@ def render_mini_games_grid():
                 )
 
 
+# ------------------ Dinosaur Run: embedded inline (not a new tab) ------------------
+DINO_GAME_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "games", "dino_run.html"
+)
+
+
+def render_dino_run():
+    if not os.path.exists(DINO_GAME_PATH):
+        st.warning(f"Dinosaur Run file not found at: {DINO_GAME_PATH}")
+        return
+    with open(DINO_GAME_PATH, "r", encoding="utf-8") as f:
+        dino_html = f.read()
+    components.html(dino_html, height=320, scrolling=False)
+
+
 
 
 def run_calm_quest():
-    # ------------------ Calm Quest (existing 60s mini-game) ------------------
-    st.markdown("#### Calm Quest")
-    st.caption("A tiny reset for your mind + body. You can stop anytime.")
+    # ------------------ Calm Quest: all 3 steps visible at once, unlocked in order ------------------
+    st.caption("A tiny reset for your mind + body. All 3 steps are shown below — complete them in order.")
 
     if st.button("🛑 End Calm Quest", use_container_width=True):
         st.session_state.calm_quest_active = False
         st.session_state.calm_quest_step = 0
+        st.session_state.calm_quest_seen = ""
+        st.session_state.calm_quest_need = ""
         st.rerun()
 
-    step = st.session_state.calm_quest_step
+    progress = st.session_state.calm_quest_step  # 0=not started, 1=breathing done, 2=grounding done, 3=complete
 
-    if step == 0:
-        st.markdown("### Step 1 – Breathing Timer 🌬️")
-        st.session_state.calm_quest_breath_seconds = st.slider(
-            "Choose breathing time (seconds)",
-            10, 45, st.session_state.calm_quest_breath_seconds,
+    # ---- Completion popup (persists until dismissed) ----
+    if progress >= 3:
+        st.markdown(
+            """
+            <div style="background:#F9E7B2;color:#4A2E10;border-radius:14px;
+                        padding:18px 22px;text-align:center;margin-bottom:16px;">
+                <div style="font-size:20px;font-weight:800;">💛 Hope you feel better now.</div>
+                <div style="font-size:14px;margin-top:6px;">You showed up for yourself today — that counts.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
+        if st.button("Done", type="primary", use_container_width=True, key="cq_dismiss"):
+            st.session_state.calm_quest_active = False
+            st.session_state.calm_quest_step = 0
+            st.session_state.calm_quest_seen = ""
+            st.session_state.calm_quest_need = ""
+            st.rerun()
+        return
 
-        if st.button("▶️ Start Breathing", type="primary", use_container_width=True):
+    st.markdown("---")
+
+    # ---- Step 1: Breathing ----
+    st.markdown("### Step 1 – Breathing Timer 🌬️")
+    st.session_state.calm_quest_breath_seconds = st.slider(
+        "Choose breathing time (seconds)",
+        10, 45, st.session_state.calm_quest_breath_seconds,
+        disabled=progress >= 1,
+        key="cq_breath_slider",
+    )
+
+    if progress < 1:
+        if st.button("▶️ Start Breathing", type="primary", use_container_width=True, key="cq_start_breath"):
             secs = st.session_state.calm_quest_breath_seconds
-            progress = st.progress(0)
+            bar = st.progress(0)
             status = st.empty()
 
             for i in range(secs):
                 cue = "Inhale…" if (i // 4) % 2 == 0 else "Exhale…"
                 status.markdown(f"**{cue}** ({secs - i}s left)")
-                progress.progress(int((i + 1) / secs * 100))
+                bar.progress(int((i + 1) / secs * 100))
                 time.sleep(1)
 
-            status.success("✅ Nice. One small reset done.")
+            status.success("✅ Breathing complete.")
             st.session_state.calm_quest_step = 1
             st.rerun()
-
-    elif step == 1:
-        st.markdown("### Step 2 – Grounding (3 things you see) 👀")
-        st.session_state.calm_quest_seen = st.text_input(
-            "Type 3 things you can see right now (comma-separated):",
-            value=st.session_state.calm_quest_seen,
-            placeholder="e.g., laptop, window, water bottle",
-        )
-
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("⬅️ Back", use_container_width=True):
-                st.session_state.calm_quest_step = 0
-                st.rerun()
-        with c2:
-            if st.button("Next ➡️", type="primary", use_container_width=True):
-                st.session_state.calm_quest_step = 2
-                st.rerun()
-
     else:
-        st.markdown("### Step 3 – One-line Journal ✏️")
-        st.session_state.calm_quest_need = st.text_area(
-            "Finish this sentence: **Right now I need…**",
-            value=st.session_state.calm_quest_need,
-            height=100,
-            placeholder="…a break, clarity, reassurance, a plan, rest, etc.",
-        )
+        st.success("✅ Breathing complete.")
 
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("⬅️ Back", use_container_width=True):
-                st.session_state.calm_quest_step = 1
-                st.rerun()
-        with c2:
-            if st.button("🏆 Finish Quest", type="primary", use_container_width=True):
-                recap = (
-                    "CALM QUEST RECAP:\n"
-                    f"- Mood: {st.session_state.current_mood}\n"
-                    f"- Focus area: {st.session_state.focus_area}\n"
-                    f"- 3 things I see: {st.session_state.calm_quest_seen}\n"
-                    f"- Right now I need: {st.session_state.calm_quest_need}\n\n"
-                    "Please respond warmly with:\n"
-                    "1) One supportive sentence\n"
-                    "2) One tiny next step (2 minutes)\n"
-                    "3) One gentle reflective question\n"
+    st.markdown("---")
+
+    # ---- Step 2: Grounding ----
+    st.markdown("### Step 2 – Grounding (3 things you see) 👀")
+    if progress < 1:
+        st.info("Complete Step 1 first.")
+
+    st.session_state.calm_quest_seen = st.text_input(
+        "Type 3 things you can see right now (comma-separated):",
+        value=st.session_state.calm_quest_seen,
+        placeholder="e.g., laptop, window, water bottle",
+        disabled=(progress < 1 or progress >= 2),
+        key="cq_seen_input",
+    )
+
+    if progress == 1:
+        if st.button("Next ➡️", type="primary", use_container_width=True, key="cq_next_ground"):
+            st.session_state.calm_quest_step = 2
+            st.rerun()
+    elif progress >= 2:
+        st.success("✅ Grounding complete.")
+
+    st.markdown("---")
+
+    # ---- Step 3: Journal ----
+    st.markdown("### Step 3 – One-line Journal ✏️")
+    if progress < 2:
+        st.info("Complete Step 2 first.")
+
+    st.session_state.calm_quest_need = st.text_area(
+        "Finish this sentence: **Right now I need…**",
+        value=st.session_state.calm_quest_need,
+        height=100,
+        placeholder="…a break, clarity, reassurance, a plan, rest, etc.",
+        disabled=(progress < 2 or progress >= 3),
+        key="cq_need_input",
+    )
+
+    if progress == 2:
+        if st.button("🏆 Finish Quest", type="primary", use_container_width=True, key="cq_finish"):
+            recap = (
+                "CALM QUEST RECAP:\n"
+                f"- Mood: {st.session_state.current_mood}\n"
+                f"- Focus area: {st.session_state.focus_area}\n"
+                f"- 3 things I see: {st.session_state.calm_quest_seen}\n"
+                f"- Right now I need: {st.session_state.calm_quest_need}\n\n"
+                "Please respond warmly with:\n"
+                "1) One supportive sentence\n"
+                "2) One tiny next step (2 minutes)\n"
+                "3) One gentle reflective question\n"
+            )
+
+            with st.spinner("EmoCare is reflecting on your Calm Quest..."):
+                response_text, _ = get_wellness_response(
+                    recap,
+                    st.session_state.focus_area,
+                    st.session_state.current_mood,
+                    journal_text=st.session_state.uploaded_pdf_text,
                 )
 
-                with st.spinner("EmoCare is reflecting on your Calm Quest..."):
-                    response_text, _ = get_wellness_response(
-                        recap,
-                        st.session_state.focus_area,
-                        st.session_state.current_mood,
-                        journal_text=st.session_state.uploaded_pdf_text,
-                    )
+            st.session_state.conversation_history.append(
+                {"role": "user", "text": "🎮 Completed Calm Quest", "timestamp": datetime.now().isoformat()}
+            )
+            st.session_state.conversation_history.append(
+                {
+                    "role": "assistant",
+                    "text": response_text,
+                    "timestamp": datetime.now().isoformat(),
+                    "used_pdf": bool(st.session_state.uploaded_pdf_text),
+                }
+            )
 
-                st.session_state.conversation_history.append(
-                    {"role": "user", "text": "🎮 Completed Calm Quest", "timestamp": datetime.now().isoformat()}
-                )
-                st.session_state.conversation_history.append(
-                    {
-                        "role": "assistant",
-                        "text": response_text,
-                        "timestamp": datetime.now().isoformat(),
-                        "used_pdf": bool(st.session_state.uploaded_pdf_text),
-                    }
-                )
-
-                if st.session_state.use_tts and elevenlabs_client:
-                    audio_bytes = elevenlabs_tts_bytes(response_text)
-                    if audio_bytes:
-                        st.audio(audio_bytes, format="audio/mp3")
-
-                st.session_state.calm_quest_active = False
-                st.session_state.calm_quest_step = 0
-                st.session_state.calm_quest_seen = ""
-                st.session_state.calm_quest_need = ""
-
-                st.success("✅ Calm Quest complete. Check your Conversation History.")
-                st.rerun()
+            st.session_state.calm_quest_step = 3
+            st.balloons()
+            st.rerun()
 
 
 # ---------- Joke generator ----------
+# ---------- Curated jokes (quality-controlled — not AI-generated on the fly) ----------
+# LLMs asked to "be funny" reliably produce corny dad-jokes, so these are hand-picked,
+# clean, wholesome one-liners. One shared pool — not tied to which companion is chosen.
+JOKES = [
+    "I told my plant a joke about photosynthesis. It didn't laugh, but it did grow a little that day.",
+    "Why do bunnies never argue? Because they always hop to a compromise.",
+    "I'm not lazy, I'm just on energy-saving mode. Like a phone, but cuter.",
+    "My bed and I have a special bond. It's the longest relationship I've ever committed to.",
+    "I asked the universe for a sign. It sent me a parking ticket. Thanks, universe.",
+    "Some days I'm a productivity powerhouse. Today I'm a productivity... house.",
+    "Why did the carrot blush? Because it saw the salad dressing.",
+    "I told my houseplant I loved it. It didn't say it back. We're working through it.",
+    "My favorite yoga pose is called 'lying very still and hoping nobody asks me to do anything.'",
+    "I'm basically a soft pretzel — a little twisted, but ultimately harmless and worth keeping around.",
+    "Fun fact: bunnies can't burp. Honestly, kind of jealous. Must be nice to keep secrets that well.",
+    "I've started saying 'I'm not procrastinating, I'm marinating.' It hasn't fooled anyone yet.",
+    "I'm 70% water and 30% strong opinions about snacks.",
+    "My gym routine is called 'bear crawl to the fridge and back.'",
+    "I don't do mornings. Mornings do me, and honestly, we should talk about consent.",
+    "Being an adult is just googling how to do things while pretending you already know.",
+    "I'm not arguing, I'm just explaining why I'm right in a slightly louder voice.",
+    "I put the 'pro' in procrastinate. Everything else is still a work in progress.",
+    "My relationship status: in a committed partnership with my blanket.",
+    "I run on two things: snacks and spite. Mostly snacks.",
+    "I'm not a morning person or a night owl. I'm some kind of tired all-day pigeon.",
+    "I told myself I'd stop talking to myself. Now we're not speaking.",
+    "I have the focus of a Roomba that just found a sock.",
+    "Panda fact: pandas sleep up to 10 hours a day. I consider this a personal goal, not a fun fact.",
+    "I tried to catch some fog earlier. I mist.",
+    "A skeleton walked into a bar and ordered a beer and a mop.",
+    "I'm reading a book about anti-gravity. It's impossible to put down.",
+    "I used to be a banker, but I lost interest.",
+    "My blanket fort has better structural integrity than most of my life decisions.",
+    "I told my computer I needed a break. Now it won't stop sending me vacation ads.",
+    "I'm not clumsy, the floor just hates me sometimes.",
+    "Why don't scientists trust atoms? Because they make up literally everything.",
+    "I put googly eyes on the fridge. Now every snack decision feels supervised.",
+    "I tried yoga. Turns out 'downward dog' is not just a suggestion, it's a warning.",
+    "I named my Wi-Fi 'Tell My Wi-Fi Love Her' so when it disconnects it says 'Tell My Wi-Fi Love Her has disconnected.'",
+    "I asked my dog what's two minus two. He said nothing.",
+]
+
+
 def get_funny_joke(mood: str, avatar: str) -> str:
-    system_prompt = f"""
-You are EmoCare, a friendly wellness companion.
-Generate ONE short, genuinely funny, wholesome joke (max 2 lines).
-No dark humor. No insults. No politics. No religion. No self-harm references.
-Keep it safe and uplifting.
+    """Returns a joke from a shuffled 'bag' so nothing repeats until every
+    joke in the pool has been shown once in this session."""
+    bag = st.session_state.get("joke_bag") or []
 
-Style:
-- If avatar is Bunny: cute + gentle
-- If avatar is Pandy: playful
-- If avatar is Silly: extra goofy
+    if not bag:
+        bag = JOKES.copy()
+        random.shuffle(bag)
 
-User mood: {mood}
-Avatar: {avatar}
-"""
-    joke = getTextLLM_system(system_prompt, "Tell me a joke.")
-    return (joke or "").strip()
+    joke = bag.pop()
+    st.session_state.joke_bag = bag
+    return joke
 
 
 # ---------- EmoCare avatar & theme config ----------
@@ -345,6 +483,9 @@ AVATAR_OPTIONS = {
 
 # ---------- Streamlit page config ----------
 st.set_page_config(page_title="AI Wellness Companion", layout="wide", page_icon="🧠")
+
+if FLOAT_OK:
+    float_init()
 
 # ---------- Load external CSS ----------
 def load_css(file_name="wellness.css"):
@@ -611,10 +752,6 @@ if "current_mood" not in st.session_state:
     st.session_state.current_mood = "Neutral"
 if "selected_avatar" not in st.session_state:
     st.session_state.selected_avatar = "Bunny"
-if "use_tts" not in st.session_state:
-    st.session_state.use_tts = False
-if "input_mode" not in st.session_state:
-    st.session_state.input_mode = "text"
 if "calm_quest_active" not in st.session_state:
     st.session_state.calm_quest_active = False
 if "calm_quest_step" not in st.session_state:
@@ -627,8 +764,6 @@ if "calm_quest_need" not in st.session_state:
     st.session_state.calm_quest_need = ""
 if "last_joke" not in st.session_state:
     st.session_state.last_joke = ""
-if "last_processed_audio_hash" not in st.session_state:
-    st.session_state.last_processed_audio_hash = None
 
 
 # ---------- SIDEBAR ----------
@@ -698,203 +833,84 @@ with st.sidebar:
         st.session_state.uploaded_pdf_text = None
         st.session_state.pdf_filename = None
 
-# ================== MAIN CONTENT ==================
-st.title("🧠 EmoCare 🧘🏻‍♀️")
-st.subheader("Your own Wellness Companion")
-st.caption("A gentle space to reflect on your thoughts and feelings.\n")
-
-# Avatar
-avatar_emoji = AVATAR_OPTIONS[st.session_state.selected_avatar]
+# ---- Navbar: jump-links to each section (plain anchor scrolling) ----
+# position:fixed with left:0/right:0 spans the FULL browser viewport on its
+# own layer, completely outside the column layout below — so it can never
+# overlap the right panel (Action Compass), regardless of column widths.
+# Placed here, before the columns are created, so it's unambiguously not
+# nested inside either one.
 st.markdown(
-    f"""
-    <div class="avatar-container">
-        <div class="avatar-image">{avatar_emoji}</div>
-        <div class="avatar-text">
-            {st.session_state.selected_avatar} says, "Hey, you've got a friend in me."
+    flatten_html(
+        """
+        <div style="
+            position:fixed; top:3.5rem; left:0; right:0; z-index:999;
+            background:rgba(102,50,31,0.82);
+            backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+            padding:12px 24px;
+            display:flex; justify-content:center; gap:30px; flex-wrap:wrap;
+            align-items:center;
+            box-shadow:0 4px 14px rgba(0,0,0,0.25);
+        ">
+            <a href="#calm-quest-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Calm Quest</a>
+            <a href="#games-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Mini Games</a>
+            <a href="#dino-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Dinosaur Run</a>
+            <a href="#quick-laugh-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Quick Laugh</a>
+            <a href="#chatbot-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Chatbot</a>
         </div>
-    </div>
-    """,
+        """
+    )
+    + '<div style="height:52px;"></div>',
     unsafe_allow_html=True,
 )
 
-tab_chat, tab_games, tab_journal, tab_settings = st.tabs(
-    ["💬 Chat", "🎮 Games", "📄 Journal & Insights", "⚙️ Settings"]
+# ---- Action Compass: fixed panel on the right, same pattern as the navbar ----
+# One combined HTML string in a single div with a direct inline
+# position:fixed style — not relying on any Streamlit-generated selector,
+# so it isn't affected by Streamlit's own container/overflow quirks.
+st.markdown(
+    flatten_html(
+        f"""
+        <div style="
+            position:fixed; top:8.5rem; right:1.5rem; z-index:998;
+            width:260px; max-height:calc(100vh - 10rem); overflow-y:auto;
+            background:#66321F; border-radius:14px; padding:16px;
+            box-shadow:0 10px 24px rgba(0,0,0,0.25);
+        ">
+            {build_action_compass_fixed_html(st.session_state.current_mood)}
+        </div>
+        """
+    ),
+    unsafe_allow_html=True,
 )
 
-# ------------------ CHAT TAB ------------------
-with tab_chat:
-    # ---- Quick Laugh ----
-    st.markdown("#### 😂 Quick Laugh")
-    if st.button("Hear a funny joke", use_container_width=True, key="joke_button"):
-        with st.spinner("Finding something funny..."):
-            st.session_state.last_joke = get_funny_joke(
-                st.session_state.current_mood,
-                st.session_state.selected_avatar,
-            )
+# ================== MAIN CONTENT: CENTER + RIGHT PANEL ==================
+center_col, right_col = st.columns([2.7, 1.0], gap="large")
 
-    if st.session_state.last_joke:
-        st.success(st.session_state.last_joke)
+# ------------------ CENTER PANEL ------------------
+with center_col:
+    st.title("🧠 EmoCare 🧘🏻‍♀️")
+    st.subheader("Your own Wellness Companion")
+    st.caption("A gentle space to reflect on your thoughts and feelings.\n")
 
-        if st.session_state.use_tts and elevenlabs_client:
-            audio_bytes = elevenlabs_tts_bytes(st.session_state.last_joke)
-            if audio_bytes:
-                st.audio(audio_bytes, format="audio/mp3")
-    st.caption("To see that amazing smile of yours! 😄")
+    # Avatar
+    avatar_emoji = AVATAR_OPTIONS[st.session_state.selected_avatar]
+    st.markdown(
+        f"""
+        <div class="avatar-container">
+            <div class="avatar-image">{avatar_emoji}</div>
+            <div class="avatar-text">
+                {st.session_state.selected_avatar} says, "Hey, you've got a friend in me."
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    st.markdown("---")
+    # ---- Calm Quest (its own section) ----
+    st.markdown('<div id="calm-quest-section"></div>', unsafe_allow_html=True)
+    st.markdown("### 🧘 Calm Quest")
+    st.caption("A 60-second guided reset — breathing, grounding, and reflection.")
 
-    # ================= CONVERSATION HISTORY =================
-    st.subheader("💬 Conversation History")
-    if st.session_state.conversation_history:
-        for msg in st.session_state.conversation_history:
-            with st.chat_message(msg["role"]):
-                st.write(msg["text"])
-                if msg.get("used_pdf"):
-                    st.caption("📄 Used uploaded journal for context.")
-    else:
-        st.info("Start the conversation below.")
-
-    st.markdown("---")
-
-    # ================= INPUT MODE SELECTION =================
-    st.subheader("How would you like to talk?")
-    c1, c2 = st.columns(2)
-
-    with c1:
-        if st.button("✏️ Text Mode", use_container_width=True):
-            st.session_state.input_mode = "text"
-
-    with c2:
-        if st.button("🎤 Voice Mode", use_container_width=True):
-            st.session_state.input_mode = "voice"
-
-    st.markdown("---")
-
-    # ================= TEXT MODE =================
-    if st.session_state.input_mode == "text":
-        user_question = st.text_area(
-            "Share how you're feeling, what's stressing you out, or anything you want to reflect on:",
-            height=120,
-            key="text_question_input",
-        )
-
-        if st.button("Send Message", type="primary", use_container_width=True):
-            if user_question.strip():
-                st.session_state.conversation_history.append(
-                    {
-                        "role": "user",
-                        "text": user_question,
-                        "timestamp": datetime.now().isoformat(),
-                    }
-                )
-
-                with st.spinner(
-                    f"EmoCare ({st.session_state.selected_avatar}) is thinking..."
-                ):
-                    response_text, _ = get_wellness_response(
-                        user_question,
-                        st.session_state.focus_area,
-                        st.session_state.current_mood,
-                        journal_text=st.session_state.uploaded_pdf_text,
-                    )
-
-                st.session_state.conversation_history.append(
-                    {
-                        "role": "assistant",
-                        "text": response_text,
-                        "timestamp": datetime.now().isoformat(),
-                        "used_pdf": bool(st.session_state.uploaded_pdf_text),
-                    }
-                )
-
-                if st.session_state.use_tts and elevenlabs_client:
-                    audio_bytes = elevenlabs_tts_bytes(response_text)
-                    if audio_bytes:
-                        st.audio(audio_bytes, format="audio/mp3")
-
-                st.rerun()
-            else:
-                st.warning("Please type something before sending.")
-
-    # ================= VOICE MODE (browser microphone — works on Streamlit Cloud) =================
-    else:
-        if not elevenlabs_client:
-            st.error("🎙️ Voice mode is disabled: ElevenLabs API Key is missing or invalid.")
-        else:
-            st.info(
-                "Voice mode: click the mic, speak, click stop — EmoCare will listen, "
-                "transcribe, and respond. This uses your browser's microphone, so it "
-                "works on Streamlit Cloud with no extra hardware."
-            )
-
-        audio_value = st.audio_input(
-            "🎙️ Record your message",
-            disabled=not elevenlabs_client,
-            key="voice_input_widget",
-        )
-
-        if audio_value is not None:
-            st.audio(audio_value)
-
-            # Avoid re-processing the same recording on every rerun
-            audio_bytes_for_hash = audio_value.getvalue()
-            audio_hash = hash(audio_bytes_for_hash)
-
-            already_sent = st.session_state.get("last_processed_audio_hash") == audio_hash
-
-            if st.button(
-                "📤 Send Voice",
-                use_container_width=True,
-                disabled=not elevenlabs_client or already_sent,
-            ):
-                with st.spinner("Transcribing your voice..."):
-                    transcribed = elevenlabs_stt(audio_value)
-
-                if not transcribed:
-                    st.warning("I couldn't understand the audio. Please try speaking louder and clearer.")
-                else:
-                    st.success(f"Transcribed: {transcribed}")
-
-                    st.session_state.conversation_history.append(
-                        {
-                            "role": "user",
-                            "text": transcribed,
-                            "timestamp": datetime.now().isoformat(),
-                        }
-                    )
-
-                    with st.spinner(
-                        f"EmoCare ({st.session_state.selected_avatar}) is thinking..."
-                    ):
-                        response_text, _ = get_wellness_response(
-                            transcribed,
-                            st.session_state.focus_area,
-                            st.session_state.current_mood,
-                            journal_text=st.session_state.uploaded_pdf_text,
-                        )
-
-                    st.session_state.conversation_history.append(
-                        {
-                            "role": "assistant",
-                            "text": response_text,
-                            "timestamp": datetime.now().isoformat(),
-                            "used_pdf": bool(st.session_state.uploaded_pdf_text),
-                        }
-                    )
-
-                    if st.session_state.use_tts and elevenlabs_client:
-                        audio_bytes = elevenlabs_tts_bytes(response_text)
-                        if audio_bytes:
-                            st.audio(audio_bytes, format="audio/mp3")
-
-                    st.session_state.last_processed_audio_hash = audio_hash
-                    st.rerun()
-        else:
-            st.caption("Tap the mic above to record. Recording stays in your browser until you press Send.")
-
-# ------------------ GAMES TAB ------------------
-with tab_games:
-    st.markdown("**Calm Quest** — a 60-second guided reset")
     if not st.session_state.calm_quest_active:
         if st.button(
             "Start Calm Quest (60s)",
@@ -908,36 +924,99 @@ with tab_games:
     else:
         run_calm_quest()
 
-    st.markdown("")
+    st.markdown("---")
+
+    # ---- Games (separate section) ----
+    st.markdown('<div id="games-section"></div>', unsafe_allow_html=True)
+    st.markdown("### 🎮 Mini Games")
     render_mini_games_grid()
 
-# ------------------ JOURNAL & INSIGHTS TAB ------------------
-with tab_journal:
-    with st.expander("🌈 Action Compass", expanded=True):
-        render_action_compass(st.session_state.current_mood)
+    st.markdown("---")
 
-    if st.session_state.uploaded_pdf_text:
-        st.markdown("---")
-        st.caption(f"📄 Using journal context from: {st.session_state.pdf_filename}")
-    else:
-        st.markdown("---")
-        st.caption("📄 Upload a journal PDF from the sidebar to add it as context here and in Chat.")
-
-# ------------------ SETTINGS TAB ------------------
-with tab_settings:
-    st.subheader("🔊 Audio Preferences")
-    st.session_state.use_tts = st.checkbox(
-        "Play responses as audio (TTS)",
-        value=st.session_state.use_tts,
-        disabled=not bool(elevenlabs_client),
-        help="Requires ElevenLabs API Key for TTS.",
-    )
-
-    st.caption("A calming voice assistant 🫂 — recording uses your browser's mic, playback uses your browser's speakers. No device setup needed.")
+    # ---- Dinosaur Run (embedded inline, not a new tab) ----
+    st.markdown('<div id="dino-section"></div>', unsafe_allow_html=True)
+    st.markdown("### 🦖 Dinosaur Run")
+    st.caption("The classic offline dino game — jump the cacti, don't stop running.")
+    render_dino_run()
 
     st.markdown("---")
-    st.caption("Mood, focus area, and journal upload now live in the sidebar (← Companion Setup / Session Settings).")
 
-st.caption(
-    "⚠️ This is just a wellness companion. It should not be used for therapy or any explicit interactions. For serious mental health concerns, please seek professional help or consult with a doctor."
-)
+    # ---- Quick Laugh ----
+    st.markdown('<div id="quick-laugh-section"></div>', unsafe_allow_html=True)
+    st.markdown("#### 😂 Quick Laugh")
+    if st.button("Hear a funny joke", use_container_width=True, key="joke_button"):
+        with st.spinner("Finding something funny..."):
+            st.session_state.last_joke = get_funny_joke(
+                st.session_state.current_mood,
+                st.session_state.selected_avatar,
+            )
+
+    if st.session_state.last_joke:
+        st.success(st.session_state.last_joke)
+    st.caption("To see that amazing smile of yours! 😄")
+
+    st.markdown("---")
+
+    # ================= CONVERSATION HISTORY =================
+    st.markdown('<div id="chatbot-section"></div>', unsafe_allow_html=True)
+    st.subheader("💬 Conversation History")
+    if st.session_state.conversation_history:
+        for msg in st.session_state.conversation_history:
+            with st.chat_message(msg["role"]):
+                st.write(msg["text"])
+                if msg.get("used_pdf"):
+                    st.caption("📄 Used uploaded journal for context.")
+    else:
+        st.info("Start the conversation below.")
+
+    st.markdown("---")
+
+    # ================= TEXT INPUT =================
+    user_question = st.text_area(
+        "Share how you're feeling, what's stressing you out, or anything you want to reflect on:",
+        height=120,
+        key="text_question_input",
+    )
+
+    if st.button("Send Message", type="primary", use_container_width=True):
+        if user_question.strip():
+            st.session_state.conversation_history.append(
+                {
+                    "role": "user",
+                    "text": user_question,
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
+
+            with st.spinner(
+                f"EmoCare ({st.session_state.selected_avatar}) is thinking..."
+            ):
+                response_text, _ = get_wellness_response(
+                    user_question,
+                    st.session_state.focus_area,
+                    st.session_state.current_mood,
+                    journal_text=st.session_state.uploaded_pdf_text,
+                )
+
+            st.session_state.conversation_history.append(
+                {
+                    "role": "assistant",
+                    "text": response_text,
+                    "timestamp": datetime.now().isoformat(),
+                    "used_pdf": bool(st.session_state.uploaded_pdf_text),
+                }
+            )
+
+            st.rerun()
+        else:
+            st.warning("Please type something before sending.")
+
+    st.caption(
+        "⚠️ This is just a wellness companion. It should not be used for therapy or any explicit interactions. For serious mental health concerns, please seek professional help or consult with a doctor."
+    )
+
+# ------------------ RIGHT PANEL ------------------
+# (Action Compass now renders as a fixed panel above, outside the column
+# layout — right_col is left empty here just to preserve center_col's width.)
+with right_col:
+    pass

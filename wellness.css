@@ -60,10 +60,28 @@ section[data-testid="stSidebar"] > div:first-child {
 }
 
 section[data-testid="stSidebar"] h2,
-section[data-testid="stSidebar"] h3,
+section[data-testid="stSidebar"] h3 {
+  margin-top: 0.8rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
 main h2, main h3 {
   margin-top: 1.4rem !important;
   margin-bottom: 0.6rem !important;
+}
+
+/* Darker, tighter separator lines in the sidebar (default hr barely shows
+   up against the soft-yellow background and has a lot of built-in margin) */
+section[data-testid="stSidebar"] hr {
+  border-color: #66321F !important;
+  border-top: 2px solid #66321F !important;
+  opacity: 0.7;
+  margin: 0.6rem 0 !important;
+}
+
+/* Tighten the default gap Streamlit adds between stacked sidebar elements */
+section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {
+  gap: 0.4rem;
 }
 
 /* Give bullet/definition lists breathing room, e.g. Action Compass */
@@ -99,44 +117,19 @@ section[data-testid="stSidebar"] * {
   color: #000000 !important;
 }
 
-/* File uploader keeps white text inside dropzone */
+/* File uploader dropzone — restyled to match the sidebar's light-card
+   look instead of Streamlit's default black box. Higher specificity
+   (section + testid + testid + *) so it wins over the catch-all
+   black-text rule above, which otherwise targets every nested element
+   individually and beats simple color inheritance. */
+section[data-testid="stSidebar"] [data-testid="stFileUploader"] [data-testid="stFileUploaderDropzone"] {
+  background: #F0DDB0 !important;
+  border: 2px dashed #66321F !important;
+  border-radius: 10px !important;
+}
+
 section[data-testid="stSidebar"] [data-testid="stFileUploader"] [data-testid="stFileUploaderDropzone"] * {
-  color: #ffffff !important;
-}
-
-/* ================= TABS AS BLACK NAVBAR ================= */
-/* Styled to visually continue Streamlit's own black toolbar above it */
-div[data-testid="stTabs"] > div:first-child {
-  background: #0E1117 !important;
-  border-radius: 10px;
-  padding: 4px 8px;
-  margin-bottom: 1.2rem;
-}
-
-div[data-testid="stTabs"] button[data-baseweb="tab"] {
-  color: #C9CDD6 !important;
-  font-weight: 600;
-  background: transparent !important;
-  border-radius: 8px;
-  padding: 8px 18px !important;
-}
-
-div[data-testid="stTabs"] button[data-baseweb="tab"]:hover {
-  color: #F9E7B2 !important;
-  background: rgba(249,231,178,0.08) !important;
-}
-
-div[data-testid="stTabs"] button[aria-selected="true"] {
-  color: #F9E7B2 !important;
-  background: rgba(249,231,178,0.14) !important;
-}
-
-div[data-testid="stTabs"] div[data-baseweb="tab-highlight"] {
-  background-color: #F9E7B2 !important;
-}
-
-div[data-testid="stTabs"] div[data-baseweb="tab-border"] {
-  background: transparent !important;
+  color: #4A2E10 !important;
 }
 
 /* ================= MAIN CARD ================= */
@@ -166,6 +159,53 @@ h1, h2, h3, h4, h5 {
 .stButton > button:hover {
   background: #E8D794 !important;
   color: #000000 !important;
+}
+
+/* Link buttons (e.g. "Open playlist/search") and the file uploader's
+   "Browse files" button are separate Streamlit widgets from .stButton,
+   so they fall back to Streamlit's default dark styling unless targeted
+   directly. Styled to match the brown dropdown boxes (e.g. "Neutral").
+   Using bracket-only attribute selectors (no assumed tag name like
+   "section" or "div") since Streamlit's actual container tags aren't
+   guaranteed and a wrong tag guess makes the whole selector silently
+   fail to match anything. */
+div[data-testid="stLinkButton"] a,
+[data-testid="stFileUploader"] button {
+  background: #66321F !important;
+  color: #F9E7B2 !important;
+  border: none !important;
+  border-radius: 8px !important;
+  font-weight: 700 !important;
+  padding: 0.5rem 1.2rem !important;
+  display: inline-block !important;
+}
+
+/* The sidebar's catch-all "* { color: black }" rule targets the nested
+   text/icon elements inside these buttons directly, which beats simple
+   inheritance from the rules above. This explicitly overrides those
+   nested elements too, with higher specificity to win the cascade.
+   Also re-asserts background here since Streamlit's own "secondary"
+   button styling on the Browse files button otherwise wins on that
+   property specifically. */
+section[data-testid="stSidebar"] div[data-testid="stLinkButton"] a,
+section[data-testid="stSidebar"] div[data-testid="stLinkButton"] a *,
+section[data-testid="stSidebar"] [data-testid="stFileUploader"] button,
+section[data-testid="stSidebar"] [data-testid="stFileUploader"] button *,
+section[data-testid="stSidebar"] [data-testid="stFileUploader"] [data-testid="stBaseButton-secondary"],
+section[data-testid="stSidebar"] [data-testid="stFileUploader"] [data-testid="stBaseButton-secondary"] * {
+  color: #F9E7B2 !important;
+}
+
+section[data-testid="stSidebar"] [data-testid="stFileUploader"] button,
+section[data-testid="stSidebar"] [data-testid="stFileUploader"] [data-testid="stBaseButton-secondary"] {
+  background-color: #66321F !important;
+  border: 1px solid #66321F !important;
+}
+
+div[data-testid="stLinkButton"] a:hover,
+[data-testid="stFileUploader"] button:hover {
+  background: #7A3F28 !important;
+  color: #F9E7B2 !important;
 }
 
 /* ================= TEXTAREA ================= */
