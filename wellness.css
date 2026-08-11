@@ -16,6 +16,17 @@ li, a, small, strong, em {
 }
 
 /* ================= SELECT / DROPDOWN ================= */
+/* Streamlit's selectbox has built-in type-to-search behavior (no official
+   parameter to disable it — this is a known open feature request:
+   github.com/streamlit/streamlit/issues/6160). Best-effort CSS-only fix:
+   disable pointer-events (and hide the cursor) on the search input itself
+   so it can't be clicked into or typed in, while leaving the dropdown
+   arrow/button clickable to still open the option list normally. */
+[data-testid="stSelectbox"] input {
+  pointer-events: none !important;
+  caret-color: transparent !important;
+}
+
 /* The visible black trigger area turned out to be a wrapper element
    around the <button>, not the button itself — targeting just the
    button only recolored a small inner part (the chevron icon box).
@@ -25,6 +36,16 @@ li, a, small, strong, em {
   background-color: #F9E7B2 !important;
   color: #4A2E10 !important;
   fill: #4A2E10 !important;
+}
+
+/* The wildcard rule above also catches the widget's own label text (e.g.
+   "What do you want to talk about?"), boxing it in the same brown color
+   as the dropdown itself. Explicitly un-paint the label's background so
+   only the actual dropdown control gets the boxed look. */
+[data-testid="stSelectbox"] [data-testid="stWidgetLabel"],
+[data-testid="stSelectbox"] [data-testid="stWidgetLabel"] * {
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 [data-testid="stSelectbox"] button {
@@ -58,6 +79,16 @@ section[data-testid="stSidebar"] [data-testid="stSelectbox"] * {
   background-color: #66321F !important;
   color: #F9E7B2 !important;
   fill: #F9E7B2 !important;
+}
+
+/* Same label exclusion as above, for the sidebar's dark-brown variant —
+   restore the label to plain sidebar text (no box, black text) instead
+   of the boxed brown-with-cream-text look meant only for the dropdown. */
+section[data-testid="stSidebar"] [data-testid="stSelectbox"] [data-testid="stWidgetLabel"],
+section[data-testid="stSidebar"] [data-testid="stSelectbox"] [data-testid="stWidgetLabel"] * {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #000000 !important;
 }
 
 section[data-testid="stSidebar"] [data-testid="stSelectbox"] button {
