@@ -51,9 +51,14 @@ li, a, small, strong, em {
   background-color: transparent !important;
 }
 
+/* SVG fix attempt didn't work in practice — fallback: make this inner
+   button fully transparent (no border, no distinct background) so it
+   blends into the parent box instead of showing as its own separate
+   white/cream square. No visible arrow, but no jarring empty box either. */
 [data-testid="stSelectbox"] button {
-  border: 1px solid #D9BC7D !important;
-  border-radius: 8px !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 /* The dropdown chevron icon (an <svg fill="currentColor"> with an
@@ -117,7 +122,9 @@ section[data-testid="stSidebar"] [data-testid="stSelectbox"] [data-testid="stWid
 }
 
 section[data-testid="stSidebar"] [data-testid="stSelectbox"] button {
-  border: 1px solid #8A5738 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 section[data-testid="stSidebar"] [data-testid="stSelectbox"] div[data-baseweb="select"] > div,
