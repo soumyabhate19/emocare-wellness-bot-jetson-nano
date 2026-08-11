@@ -285,13 +285,13 @@ def render_dino_run():
     if os.path.exists(DINO_GAME_PATH):
         with open(DINO_GAME_PATH, "r", encoding="utf-8") as f:
             dino_html = f.read()
-        components.html(dino_html, height=320, scrolling=False)
+        components.html(dino_html, height=250, scrolling=False)
         return
 
     # Local file missing — fall back to the GitHub Pages hosted copy.
     dino_html = _fetch_dino_html_fallback()
     if dino_html:
-        components.html(dino_html, height=320, scrolling=False)
+        components.html(dino_html, height=250, scrolling=False)
     else:
         st.warning(
             f"Dinosaur Run file not found locally at {DINO_GAME_PATH}, "
