@@ -264,15 +264,39 @@ def render_mini_games_grid():
 DINO_GAME_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "games", "dino_run.html"
 )
+# Fallback URL (matches the same GAMES_BASE_URL pattern used by the other
+# games above) — used if the local games/dino_run.html file isn't present
+# in this deployment, so the embed doesn't depend on getting local file
+# placement exactly right.
+DINO_GAME_FALLBACK_URL = f"{GAMES_BASE_URL}/dino_run.html"
+
+
+@st.cache_data(show_spinner=False, ttl=3600)
+def _fetch_dino_html_fallback() -> Optional[str]:
+    try:
+        import urllib.request
+        with urllib.request.urlopen(DINO_GAME_FALLBACK_URL, timeout=8) as resp:
+            return resp.read().decode("utf-8")
+    except Exception:
+        return None
 
 
 def render_dino_run():
-    if not os.path.exists(DINO_GAME_PATH):
-        st.warning(f"Dinosaur Run file not found at: {DINO_GAME_PATH}")
+    if os.path.exists(DINO_GAME_PATH):
+        with open(DINO_GAME_PATH, "r", encoding="utf-8") as f:
+            dino_html = f.read()
+        components.html(dino_html, height=320, scrolling=False)
         return
-    with open(DINO_GAME_PATH, "r", encoding="utf-8") as f:
-        dino_html = f.read()
-    components.html(dino_html, height=320, scrolling=False)
+
+    # Local file missing — fall back to the GitHub Pages hosted copy.
+    dino_html = _fetch_dino_html_fallback()
+    if dino_html:
+        components.html(dino_html, height=320, scrolling=False)
+    else:
+        st.warning(
+            f"Dinosaur Run file not found locally at {DINO_GAME_PATH}, "
+            f"and the fallback ({DINO_GAME_FALLBACK_URL}) couldn't be reached either."
+        )
 
 
 
@@ -573,7 +597,7 @@ Your role:
 Important boundaries:
 - You are not a doctor, therapist, counselor, or emergency service.
 - You do not form personal, romantic, or exclusive relationships with users.
-- If a user expresses romantic feelings toward you (e.g., “I love you”, “be my partner”, “don’t leave me”),
+- If a user expresses romantic feelings toward you (e.g., "I love you", "be my partner", "don't leave me"),
   respond kindly, set a clear boundary, and encourage connection with real people (friends, family, trusted support).
 - If a user becomes emotionally dependent or obsessed, gently redirect them toward healthy, real-world support.
 - If a user uses sexual, explicit, or dirty talk, politely refuse to engage and redirect to emotional well-being support.
