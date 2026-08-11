@@ -866,7 +866,7 @@ with st.sidebar:
 st.markdown(
     flatten_html(
         """
-        <div style="
+        <div class="emocare-navbar" style="
             position:fixed; top:3.5rem; left:0; right:0; z-index:999;
             background:rgba(102,50,31,0.82);
             backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
@@ -875,16 +875,16 @@ st.markdown(
             align-items:center;
             box-shadow:0 4px 14px rgba(0,0,0,0.25);
         ">
-            <a href="#calm-quest-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Calm Quest</a>
-            <a href="#games-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Mini Games</a>
-            <a href="#dino-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Dinosaur Run</a>
-            <a href="#quick-laugh-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Quick Laugh</a>
-            <a href="#chatbot-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Chatbot</a>
-            <a href="#contact-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Contact Me</a>
+            <a class="emocare-navbar-link" href="#calm-quest-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Calm Quest</a>
+            <a class="emocare-navbar-link" href="#games-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Mini Games</a>
+            <a class="emocare-navbar-link" href="#dino-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Dinosaur Run</a>
+            <a class="emocare-navbar-link" href="#quick-laugh-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Quick Laugh</a>
+            <a class="emocare-navbar-link" href="#chatbot-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Chatbot</a>
+            <a class="emocare-navbar-link" href="#contact-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Contact Me</a>
         </div>
         """
     )
-    + '<div style="height:52px;"></div>',
+    + '<div class="emocare-navbar-spacer" style="height:52px;"></div>',
     unsafe_allow_html=True,
 )
 
@@ -895,7 +895,7 @@ st.markdown(
 st.markdown(
     flatten_html(
         f"""
-        <div style="
+        <div class="emocare-fixed-compass" style="
             position:fixed; top:8.5rem; right:1.5rem; z-index:998;
             width:260px; max-height:calc(100vh - 10rem); overflow-y:auto;
             background:#66321F; border-radius:14px; padding:16px;
