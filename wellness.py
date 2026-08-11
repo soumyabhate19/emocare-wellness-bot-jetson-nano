@@ -136,7 +136,7 @@ def render_action_compass(current_mood: str):
 # These files live in the /docs/games/ folder of your GitHub repo. GitHub Pages
 # serves that folder as real https:// pages, which open reliably in a new tab —
 # unlike data: URIs, which some Chrome builds/extensions block or mangle.
-GAMES_BASE_URL = "https://soumyabhate19.github.io/emocare-wellness-bot-jetson-nano"
+GAMES_BASE_URL = "https://soumyabhate19.github.io/emocare-wellness-bot-jetson-nano/games"
 
 MINI_GAMES = [
     {
@@ -158,9 +158,15 @@ MINI_GAMES = [
         "file": "grounding_senses.html",
     },
     {
+        "id": "trace_animals",
+        "label": "🖍️ Trace & Color",
+        "blurb": "Trace animals, birds, flowers, and fruits in any color.",
+        "file": "trace_animals.html",
+    },
+    {
         "id": "doodle_pad",
         "label": "🎨 Doodle Pad",
-        "blurb": "No goal — just let your hand move.",
+        "blurb": "Draw the prompt — a real AI guesses what you drew.",
         "file": "doodle_pad.html",
     },
 ]
@@ -692,51 +698,31 @@ with st.sidebar:
         st.session_state.uploaded_pdf_text = None
         st.session_state.pdf_filename = None
 
-# ================== MAIN CONTENT: CENTER + RIGHT PANEL ==================
-center_col, right_col = st.columns([2.7, 1.0], gap="large")
+# ================== MAIN CONTENT ==================
+st.title("🧠 EmoCare 🧘🏻‍♀️")
+st.subheader("Your own Wellness Companion")
+st.caption("A gentle space to reflect on your thoughts and feelings.\n")
 
-# ------------------ CENTER PANEL ------------------
-with center_col:
-    st.title("🧠 EmoCare 🧘🏻‍♀️")
-    st.subheader("Your own Wellness Companion")
-    st.caption("A gentle space to reflect on your thoughts and feelings.\n")
-
-    # Avatar
-    avatar_emoji = AVATAR_OPTIONS[st.session_state.selected_avatar]
-    st.markdown(
-        f"""
-        <div class="avatar-container">
-            <div class="avatar-image">{avatar_emoji}</div>
-            <div class="avatar-text">
-                {st.session_state.selected_avatar} says, "Hey, you've got a friend in me."
-            </div>
+# Avatar
+avatar_emoji = AVATAR_OPTIONS[st.session_state.selected_avatar]
+st.markdown(
+    f"""
+    <div class="avatar-container">
+        <div class="avatar-image">{avatar_emoji}</div>
+        <div class="avatar-text">
+            {st.session_state.selected_avatar} says, "Hey, you've got a friend in me."
         </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
-    # ---- Games ----
-    st.markdown("### 🎮 Games")
+tab_chat, tab_games, tab_journal, tab_settings = st.tabs(
+    ["💬 Chat", "🎮 Games", "📄 Journal & Insights", "⚙️ Settings"]
+)
 
-    st.markdown("**Calm Quest** — a 60-second guided reset")
-    if not st.session_state.calm_quest_active:
-        if st.button(
-            "Start Calm Quest (60s)",
-            type="primary",
-            use_container_width=True,
-            key="start_calm_quest",
-        ):
-            st.session_state.calm_quest_active = True
-            st.session_state.calm_quest_step = 0
-            st.rerun()
-    else:
-        run_calm_quest()
-
-    st.markdown("")
-    render_mini_games_grid()
-
-    st.markdown("---")
-
+# ------------------ CHAT TAB ------------------
+with tab_chat:
     # ---- Quick Laugh ----
     st.markdown("#### 😂 Quick Laugh")
     if st.button("Hear a funny joke", use_container_width=True, key="joke_button"):
@@ -781,7 +767,7 @@ with center_col:
     with c2:
         if st.button("🎤 Voice Mode", use_container_width=True):
             st.session_state.input_mode = "voice"
-            
+
     st.markdown("---")
 
     # ================= TEXT MODE =================
@@ -906,23 +892,52 @@ with center_col:
         else:
             st.caption("Tap the mic above to record. Recording stays in your browser until you press Send.")
 
-    st.caption(
-        "⚠️ This is just a wellness companion. It should not be used for therapy or any explicit interactions. For serious mental health concerns, please seek professional help or consult with a doctor."
-    )
+# ------------------ GAMES TAB ------------------
+with tab_games:
+    st.markdown("**Calm Quest** — a 60-second guided reset")
+    if not st.session_state.calm_quest_active:
+        if st.button(
+            "Start Calm Quest (60s)",
+            type="primary",
+            use_container_width=True,
+            key="start_calm_quest",
+        ):
+            st.session_state.calm_quest_active = True
+            st.session_state.calm_quest_step = 0
+            st.rerun()
+    else:
+        run_calm_quest()
 
-# ------------------ RIGHT PANEL ------------------
-with right_col:
+    st.markdown("")
+    render_mini_games_grid()
+
+# ------------------ JOURNAL & INSIGHTS TAB ------------------
+with tab_journal:
     with st.expander("🌈 Action Compass", expanded=True):
         render_action_compass(st.session_state.current_mood)
 
-    st.markdown("")
+    if st.session_state.uploaded_pdf_text:
+        st.markdown("---")
+        st.caption(f"📄 Using journal context from: {st.session_state.pdf_filename}")
+    else:
+        st.markdown("---")
+        st.caption("📄 Upload a journal PDF from the sidebar to add it as context here and in Chat.")
 
-    with st.expander("🔊 Audio Preferences", expanded=False):
-        st.session_state.use_tts = st.checkbox(
-            "Play responses as audio (TTS)",
-            value=st.session_state.use_tts,
-            disabled=not bool(elevenlabs_client),
-            help="Requires ElevenLabs API Key for TTS.",
-        )
+# ------------------ SETTINGS TAB ------------------
+with tab_settings:
+    st.subheader("🔊 Audio Preferences")
+    st.session_state.use_tts = st.checkbox(
+        "Play responses as audio (TTS)",
+        value=st.session_state.use_tts,
+        disabled=not bool(elevenlabs_client),
+        help="Requires ElevenLabs API Key for TTS.",
+    )
 
     st.caption("A calming voice assistant 🫂 — recording uses your browser's mic, playback uses your browser's speakers. No device setup needed.")
+
+    st.markdown("---")
+    st.caption("Mood, focus area, and journal upload now live in the sidebar (← Companion Setup / Session Settings).")
+
+st.caption(
+    "⚠️ This is just a wellness companion. It should not be used for therapy or any explicit interactions. For serious mental health concerns, please seek professional help or consult with a doctor."
+)
