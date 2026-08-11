@@ -888,14 +888,14 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ---- Action Compass: fixed panel on the right, same pattern as the navbar ----
-# One combined HTML string in a single div with a direct inline
-# position:fixed style — not relying on any Streamlit-generated selector,
-# so it isn't affected by Streamlit's own container/overflow quirks.
+# ---- Action Compass: fixed panel on desktop, hidden on mobile ----
+# (On mobile, a second copy renders in normal page flow after Conversation
+# History instead — see "emocare-compass-mobile" in center_col below. CSS
+# media queries decide which one is visible; only one shows at a time.)
 st.markdown(
     flatten_html(
         f"""
-        <div class="emocare-fixed-compass" style="
+        <div class="emocare-compass-desktop" style="
             position:fixed; top:8.5rem; right:1.5rem; z-index:998;
             width:260px; max-height:calc(100vh - 10rem); overflow-y:auto;
             background:#66321F; border-radius:14px; padding:16px;
@@ -993,6 +993,23 @@ with center_col:
                     st.caption("📄 Used uploaded journal for context.")
     else:
         st.info("Start the conversation below.")
+
+    st.markdown("---")
+
+    # ---- Action Compass (mobile only — normal flow, after Conversation History) ----
+    st.markdown(
+        flatten_html(
+            f"""
+            <div class="emocare-compass-mobile" style="
+                background:#66321F; border-radius:14px; padding:16px;
+                box-shadow:0 6px 16px rgba(0,0,0,0.15); margin-bottom:1.2rem;
+            ">
+                {build_action_compass_fixed_html(st.session_state.current_mood)}
+            </div>
+            """
+        ),
+        unsafe_allow_html=True,
+    )
 
     st.markdown("---")
 
