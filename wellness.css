@@ -104,6 +104,41 @@ section[data-testid="stSidebar"] [data-testid="stFileUploader"] [data-testid="st
   color: #ffffff !important;
 }
 
+/* ================= TABS AS BLACK NAVBAR ================= */
+/* Styled to visually continue Streamlit's own black toolbar above it */
+div[data-testid="stTabs"] > div:first-child {
+  background: #0E1117 !important;
+  border-radius: 10px;
+  padding: 4px 8px;
+  margin-bottom: 1.2rem;
+}
+
+div[data-testid="stTabs"] button[data-baseweb="tab"] {
+  color: #C9CDD6 !important;
+  font-weight: 600;
+  background: transparent !important;
+  border-radius: 8px;
+  padding: 8px 18px !important;
+}
+
+div[data-testid="stTabs"] button[data-baseweb="tab"]:hover {
+  color: #F9E7B2 !important;
+  background: rgba(249,231,178,0.08) !important;
+}
+
+div[data-testid="stTabs"] button[aria-selected="true"] {
+  color: #F9E7B2 !important;
+  background: rgba(249,231,178,0.14) !important;
+}
+
+div[data-testid="stTabs"] div[data-baseweb="tab-highlight"] {
+  background-color: #F9E7B2 !important;
+}
+
+div[data-testid="stTabs"] div[data-baseweb="tab-border"] {
+  background: transparent !important;
+}
+
 /* ================= MAIN CARD ================= */
 main .block-container {
   padding: 2rem !important;
