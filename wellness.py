@@ -880,6 +880,7 @@ st.markdown(
             <a href="#dino-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Dinosaur Run</a>
             <a href="#quick-laugh-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Quick Laugh</a>
             <a href="#chatbot-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Chatbot</a>
+            <a href="#contact-section" style="color:#F9E7B2;text-decoration:none;font-weight:700;font-size:14px;">Contact Me</a>
         </div>
         """
     )
@@ -1037,6 +1038,32 @@ with center_col:
 
     st.caption(
         "⚠️ This is just a wellness companion. It should not be used for therapy or any explicit interactions. For serious mental health concerns, please seek professional help or consult with a doctor."
+    )
+
+    st.markdown("---")
+
+    # ---- Contact Me (anchor + footer-style info) ----
+    st.markdown('<div id="contact-section"></div>', unsafe_allow_html=True)
+    st.markdown(
+        flatten_html(
+            """
+            <div style="text-align:center;padding:18px 10px 6px;">
+                <div style="display:flex;flex-wrap:wrap;justify-content:center;
+                            gap:26px;color:#F9E7B2;font-size:14px;margin-bottom:16px;">
+                    <span>💼 linkedin.com/in/soumyabhate19</span>
+                    <span>🐙 github.com/soumyabhate19</span>
+                </div>
+                <hr style="border-color:rgba(249,231,178,0.3);margin:14px 0;">
+                <div style="display:flex;justify-content:space-between;
+                            flex-wrap:wrap;gap:8px;color:#FDF6E3;
+                            font-size:13px;opacity:0.85;padding:0 4px;">
+                    <span>Baltimore, MD</span>
+                    <span>Soumya Bhate · EmoCare © 2026</span>
+                </div>
+            </div>
+            """
+        ),
+        unsafe_allow_html=True,
     )
 
 # ------------------ RIGHT PANEL ------------------
