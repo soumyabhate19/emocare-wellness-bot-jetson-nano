@@ -321,7 +321,7 @@ def run_calm_quest():
             <div style="background:#F9E7B2;color:#4A2E10;border-radius:14px;
                         padding:18px 22px;text-align:center;margin-bottom:16px;">
                 <div style="font-size:20px;font-weight:800;">💛 Hope you feel better now.</div>
-                <div style="font-size:14px;margin-top:6px;">You showed up for yourself today, that counts.</div>
+                <div style="font-size:14px;margin-top:6px;">You showed up for yourself today — that counts.</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -961,7 +961,7 @@ with center_col:
     # ---- Dinosaur Run (embedded inline, not a new tab) ----
     st.markdown('<div id="dino-section"></div>', unsafe_allow_html=True)
     st.markdown("### 🦖 Dinosaur Run")
-    st.caption("The classic offline dino game, jump the cacti, don't stop running.")
+    st.caption("The classic offline dino game — jump the cacti, don't stop running.")
     render_dino_run()
 
     st.markdown("---")
@@ -993,23 +993,6 @@ with center_col:
                     st.caption("📄 Used uploaded journal for context.")
     else:
         st.info("Start the conversation below.")
-
-    st.markdown("---")
-
-    # ---- Action Compass (mobile only — normal flow, after Conversation History) ----
-    st.markdown(
-        flatten_html(
-            f"""
-            <div class="emocare-compass-mobile" style="
-                background:#66321F; border-radius:14px; padding:16px;
-                box-shadow:0 6px 16px rgba(0,0,0,0.15); margin-bottom:1.2rem;
-            ">
-                {build_action_compass_fixed_html(st.session_state.current_mood)}
-            </div>
-            """
-        ),
-        unsafe_allow_html=True,
-    )
 
     st.markdown("---")
 
@@ -1052,6 +1035,21 @@ with center_col:
             st.rerun()
         else:
             st.warning("Please type something before sending.")
+
+    # ---- Action Compass (mobile only — normal flow, after Send Message) ----
+    st.markdown(
+        flatten_html(
+            f"""
+            <div class="emocare-compass-mobile" style="
+                background:#66321F; border-radius:14px; padding:16px;
+                box-shadow:0 6px 16px rgba(0,0,0,0.15); margin:1.2rem 0;
+            ">
+                {build_action_compass_fixed_html(st.session_state.current_mood)}
+            </div>
+            """
+        ),
+        unsafe_allow_html=True,
+    )
 
     st.caption(
         "⚠️ This is just a wellness companion. It should not be used for therapy or any explicit interactions. For serious mental health concerns, please seek professional help or consult with a doctor."
@@ -1100,7 +1098,7 @@ with center_col:
                 <div style="display:flex;justify-content:space-between;
                             flex-wrap:wrap;gap:8px;color:#FDF6E3;
                             font-size:13px;opacity:0.85;padding:0 4px;">
-                    <span>Boston, MD</span>
+                    <span>Baltimore, MD</span>
                     <span>Soumya Bhate · EmoCare © 2026</span>
                 </div>
             </div>
