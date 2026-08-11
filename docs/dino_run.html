@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Dinosaur Run - EmoCare</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap');
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    font-family: 'Source Sans 3', sans-serif;
+    background: #CE7E5A;
+    color: #FDF6E3;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 12px 16px;
+  }
+
+  #hud {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 620px;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: #F9E7B2;
+    font-weight: 600;
+  }
+
+  #game-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 620px;
+  }
+
+  canvas#dino-canvas {
+    width: 100%;
+    display: block;
+    background: #CE7E5A;
+    border-radius: 14px;
+    border: 2px solid rgba(249,231,178,0.35);
+    touch-action: none;
+  }
+
+  #overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: rgba(74,46,16,0.35);
+    border-radius: 14px;
+    text-align: center;
+    padding: 16px;
+  }
+  #overlay.hidden { display: none; }
+
+  #overlay .title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #F9E7B2;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  }
+
+  button.pill {
+    background: #66321F;
+    color: #F9E7B2;
+    border: none;
+    border-radius: 10px;
+    padding: 9px 20px;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  button.pill:hover { background: #7A3F28; }
+
+  .hint {
+    font-size: 12px;
+    color: #FDF6E3;
+    opacity: 0.85;
+    max-width: 260px;
+  }
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <span>Score: <span id="score-val">0</span></span>
+  <span>High Score: <span id="high-val">0</span></span>
+</div>
+
+<div id="game-wrap">
+  <canvas id="dino-canvas" width="620" height="200"></canvas>
+  <div id="overlay">
+    <div class="title">Press Start to run</div>
+    <button class="pill" id="start-btn">▶️ Start</button>
+    <div class="hint">Space / Up Arrow / Tap to jump. Avoid the cacti.</div>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('dino-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  const overlay = document.getElementById('overlay');
+  const startBtn = document.getElementById('start-btn');
+  const scoreEl = document.getElementById('score-val');
+  const highEl = document.getElementById('high-val');
+
+  const W = canvas.width;
+  const H = canvas.height;
+  const GROUND_Y = H - 26;
+  const CREAM = '#F9E7B2';
+  const BG = '#CE7E5A';
+
+  let highScore = 0;
+  try {
+    highScore = parseInt(localStorage.getItem('emocare_dino_high') || '0', 10) || 0;
+  } catch (e) {}
+  highEl.textContent = highScore;
+
+  // ---------- Pixel-art T-Rex sprite ----------
+  // Grid is read left-to-right = tail-to-head (dino runs facing right).
+  // '#' = filled pixel, '.' = empty. Body/head rows are constant;
+  // leg rows swap between two frames for a run-cycle, and a third
+  // (tucked) pose is used while airborne.
+  const BODY_ROWS = [
+    "................",
+    "..........###...",
+    ".........#####..",
+    ".........######.",
+    ".........######.",
+    "........#######.",
+    ".......########.",
+    "......#########.",
+    ".#....#########.",
+    "##...##########.",
+    "###.############",
+    "################",
+  ];
+  const LEGS_RUN_A = [
+    "...##.......##..",
+    "...##........##.",
+    "...##.............",
+  ];
+  const LEGS_RUN_B = [
+    "...##.......##..",
+    "....##......##..",
+    "............##....",
+  ];
+  const LEGS_JUMP = [
+    "...##.......##..",
+    "................",
+    "................",
+  ];
+
+  const PIXEL = 3; // px per grid cell
+  const GRID_W = 16;
+  const SPRITE_H_ROWS = BODY_ROWS.length + LEGS_RUN_A.length; // 15
+  const dinoW = GRID_W * PIXEL;   // 48
+  const dinoH = SPRITE_H_ROWS * PIXEL; // 45
+
+  function drawSprite(rows, x, y) {
+    ctx.fillStyle = CREAM;
+    for (let r = 0; r < rows.length; r++) {
+      const row = rows[r];
+      for (let c = 0; c < row.length && c < GRID_W; c++) {
+        if (row[c] === '#') {
+          ctx.fillRect(x + c * PIXEL, y + r * PIXEL, PIXEL, PIXEL);
+        }
+      }
+    }
+  }
+
+  let running = false;
+  let gameOver = false;
+  let score = 0;
+  let speed = 5.0;
+  let frame = 0;
+  let nextObstacleAt = 0;
+
+  const dino = {
+    x: 46,
+    y: GROUND_Y - dinoH,
+    w: dinoW,
+    h: dinoH,
+    vy: 0,
+    jumping: false,
+    runToggle: false,
+  };
+
+  const GRAVITY = 0.62;
+  const JUMP_VELOCITY = -11.2;
+
+  let obstacles = [];
+
+  function resetGame() {
+    score = 0;
+    speed = 5.0;
+    frame = 0;
+    obstacles = [];
+    dino.y = GROUND_Y - dino.h;
+    dino.vy = 0;
+    dino.jumping = false;
+    gameOver = false;
+    nextObstacleAt = 60 + Math.random() * 60;
+    scoreEl.textContent = 0;
+  }
+
+  function jump() {
+    if (!running) return;
+    if (!dino.jumping) {
+      dino.vy = JUMP_VELOCITY;
+      dino.jumping = true;
+    }
+  }
+
+  function spawnObstacle() {
+    const clusterSize = Math.random() < 0.25 ? 2 : 1;
+    const spikes = [];
+    let totalWidth = 0;
+    for (let i = 0; i < clusterSize; i++) {
+      const w = 10 + Math.random() * 6;
+      const h = 26 + Math.random() * 20;
+      spikes.push({ w, h, offsetX: totalWidth });
+      totalWidth += w + 4;
+    }
+    obstacles.push({ x: W + 10, width: totalWidth, spikes });
+  }
+
+  function update() {
+    frame += 1;
+
+    dino.vy += GRAVITY;
+    dino.y += dino.vy;
+    if (dino.y >= GROUND_Y - dino.h) {
+      dino.y = GROUND_Y - dino.h;
+      dino.vy = 0;
+      dino.jumping = false;
+    }
+
+    if (!dino.jumping && frame % 6 === 0) {
+      dino.runToggle = !dino.runToggle;
+    }
+
+    nextObstacleAt -= 1;
+    if (nextObstacleAt <= 0) {
+      spawnObstacle();
+      const gap = Math.max(45, 90 - speed * 3);
+      nextObstacleAt = gap + Math.random() * gap;
+    }
+
+    for (const ob of obstacles) ob.x -= speed;
+    obstacles = obstacles.filter(ob => ob.x + ob.width > -10);
+
+    const pad = 7;
+    const dLeft = dino.x + pad;
+    const dRight = dino.x + dino.w - pad;
+    const dTop = dino.y + pad;
+    const dBottom = dino.y + dino.h;
+
+    for (const ob of obstacles) {
+      for (const sp of ob.spikes) {
+        const sx = ob.x + sp.offsetX;
+        const sTop = GROUND_Y - sp.h;
+        if (dRight > sx && dLeft < sx + sp.w && dBottom > sTop && dTop < GROUND_Y) {
+          endGame();
+          return;
+        }
+      }
+    }
+
+    if (frame % 6 === 0) {
+      score += 1;
+      scoreEl.textContent = score;
+    }
+    speed = Math.min(13, 5.0 + score * 0.02);
+  }
+
+  function endGame() {
+    running = false;
+    gameOver = true;
+    if (score > highScore) {
+      highScore = score;
+      highEl.textContent = highScore;
+      try { localStorage.setItem('emocare_dino_high', String(highScore)); } catch (e) {}
+    }
+    overlay.classList.remove('hidden');
+    overlay.innerHTML = `
+      <div class="title">GAME OVER — Score: ${score}</div>
+      <button class="pill" id="restart-btn">🔁 Run Again</button>
+      <div class="hint">Space / Up Arrow / Tap to jump next run.</div>
+    `;
+    document.getElementById('restart-btn').addEventListener('click', startRun);
+  }
+
+  function drawGround() {
+    ctx.strokeStyle = CREAM;
+    ctx.globalAlpha = 0.7;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, GROUND_Y);
+    ctx.lineTo(W, GROUND_Y);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  function drawDino() {
+    const legRows = dino.jumping
+      ? LEGS_JUMP
+      : (dino.runToggle ? LEGS_RUN_A : LEGS_RUN_B);
+
+    drawSprite(BODY_ROWS, dino.x, dino.y);
+    drawSprite(legRows, dino.x, dino.y + BODY_ROWS.length * PIXEL);
+
+    // tiny T-rex arm, poking out below the neck
+    ctx.fillStyle = CREAM;
+    ctx.fillRect(dino.x + 34 * (PIXEL / 3), dino.y + 30, 4, 5);
+
+    // eye punched into the head (background color)
+    ctx.fillStyle = BG;
+    ctx.fillRect(dino.x + 12 * PIXEL, dino.y + 3 * PIXEL, PIXEL, PIXEL);
+  }
+
+  function drawObstacles() {
+    ctx.fillStyle = CREAM;
+    for (const ob of obstacles) {
+      for (const sp of ob.spikes) {
+        const sx = ob.x + sp.offsetX;
+        const sTop = GROUND_Y - sp.h;
+        ctx.fillRect(sx, sTop, sp.w, sp.h);
+        ctx.fillRect(sx - 4, sTop + sp.h * 0.35, 4, sp.w * 0.7);
+        ctx.fillRect(sx + sp.w, sTop + sp.h * 0.5, 4, sp.w * 0.6);
+      }
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    drawGround();
+    drawObstacles();
+    drawDino();
+  }
+
+  function loop() {
+    if (running) {
+      update();
+      draw();
+      if (running) requestAnimationFrame(loop);
+    }
+  }
+
+  function startRun() {
+    resetGame();
+    overlay.classList.add('hidden');
+    running = true;
+    requestAnimationFrame(loop);
+  }
+
+  startBtn.addEventListener('click', startRun);
+
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.code === 'ArrowUp') {
+      e.preventDefault();
+      if (!running && !gameOver) startRun();
+      else jump();
+    }
+  });
+
+  canvas.addEventListener('mousedown', () => {
+    if (!running && !gameOver) startRun();
+    else jump();
+  });
+  canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (!running && !gameOver) startRun();
+    else jump();
+  });
+
+  draw();
+</script>
+</body>
+</html>

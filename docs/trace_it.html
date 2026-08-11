@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Trace & Color - EmoCare</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap');
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Source Sans 3', sans-serif;
+    background: #CE7E5A;
+    color: #4A2E10;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 22px 16px 34px;
+  }
+  h1 {
+    color: #F9E7B2;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    margin-bottom: 2px;
+    text-align: center;
+  }
+  p.sub {
+    color: #FDF6E3;
+    margin-top: 0;
+    margin-bottom: 16px;
+    text-align: center;
+    max-width: 420px;
+  }
+
+  /* Category tabs */
+  #tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 14px;
+  }
+  .tab {
+    background: rgba(255,255,255,0.15);
+    color: #FDF6E3;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .tab.active {
+    background: #F9E7B2;
+    color: #4A2E10;
+    border-color: #F9E7B2;
+  }
+
+  #shape-label {
+    color: #FDF6E3;
+    font-size: 15px;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  /* Stage: SVG guide + canvas overlay */
+  #stage-wrap {
+    position: relative;
+    width: 320px;
+    height: 320px;
+    background: #FDF6E3;
+    border-radius: 16px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    overflow: hidden;
+  }
+  #guide-svg, #draw-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 320px;
+    height: 320px;
+  }
+  #draw-canvas { touch-action: none; cursor: crosshair; }
+
+  .guide-line {
+    fill: none;
+    stroke: #C9AE86;
+    stroke-width: 3;
+    stroke-dasharray: 7 7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .guide-dot {
+    fill: #C9AE86;
+  }
+
+  /* Toolbar */
+  #toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 340px;
+  }
+  .swatch {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+  }
+  .swatch.active { border-color: #66321F; box-shadow: 0 0 0 2px #F9E7B2; }
+
+  #nav-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  button.pill {
+    background: #66321F;
+    color: #F9E7B2;
+    border: none;
+    border-radius: 10px;
+    padding: 8px 16px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  button.pill:hover { background: #7A3F28; }
+  button.pill:disabled { opacity: 0.4; cursor: default; }
+  button.pill.secondary {
+    background: #F9E7B2;
+    color: #4A2E10;
+  }
+  button.pill.secondary:hover { background: #E8D794; }
+</style>
+</head>
+<body>
+<h1>🖍️ Trace &amp; Color</h1>
+<p class="sub">Trace the dotted outline in any color you like, then color it in.</p>
+
+<div id="tabs"></div>
+<div id="shape-label"></div>
+
+<div id="stage-wrap">
+  <svg id="guide-svg" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg"></svg>
+  <canvas id="draw-canvas" width="320" height="320"></canvas>
+</div>
+
+<div id="toolbar"></div>
+
+<div id="nav-row">
+  <button class="pill secondary" id="prev-btn">◀ Prev</button>
+  <button class="pill secondary" id="clear-btn">Clear</button>
+  <button class="pill" id="next-btn">Next ▶</button>
+</div>
+
+<script>
+// ---------- Shape library ----------
+// Each shape is a set of SVG path/primitive definitions rendered as a
+// dotted guide. Add more by pushing new entries into SHAPES[category].
+const SHAPES = {
+  "Animals": [
+    {
+      name: "Cat",
+      paths: [
+        "M150,140 m-55,0 a55,55 0 1,0 110,0 a55,55 0 1,0 -110,0", // head
+        "M100,100 L120,58 L136,100 Z", // left ear
+        "M200,100 L180,58 L164,100 Z", // right ear
+      ],
+      ellipses: [{cx:150, cy:232, rx:46, ry:55}],
+      curves: ["M196,252 C232,242 236,190 208,168"],
+      dots: [{cx:128, cy:135, r:4}, {cx:172, cy:135, r:4}]
+    },
+    {
+      name: "Fish",
+      paths: [
+        "M212,150 L252,110 L252,190 Z",
+        "M128,116 Q150,88 172,116",
+      ],
+      ellipses: [{cx:140, cy:150, rx:72, ry:42}],
+      dots: [{cx:108, cy:140, r:5}]
+    },
+    {
+      name: "Elephant",
+      paths: [
+        "M60,120 C28,108 22,162 56,178 C40,150 48,130 60,120 Z",
+        "M64,176 C52,212 58,244 80,248",
+      ],
+      ellipses: [{cx:150, cy:192, rx:72, ry:50}, {cx:92, cy:150, rx:40, ry:40}],
+      curves: ["M118,238 L118,270", "M140,240 L140,272", "M165,240 L165,272", "M188,236 L188,268"],
+      dots: [{cx:80, cy:140, r:4}]
+    },
+  ],
+  "Birds": [
+    {
+      name: "Owl",
+      paths: [
+        "M110,112 L122,80 L132,112 Z",
+        "M170,112 L180,80 L192,112 Z",
+        "M144,156 L158,156 L151,172 Z",
+      ],
+      ellipses: [{cx:150, cy:172, rx:56, ry:66}, {cx:130,cy:142,rx:19,ry:19}, {cx:170,cy:142,rx:19,ry:19}],
+      dots: [{cx:130, cy:142, r:5}, {cx:170, cy:142, r:5}]
+    },
+    {
+      name: "Duck",
+      paths: [
+        "M80,140 L48,135 L80,150 Z",
+        "M140,182 Q172,170 192,192 Q170,212 140,200 Z",
+      ],
+      ellipses: [{cx:152, cy:192, rx:62, ry:46}, {cx:110, cy:140, rx:33, ry:33}],
+      dots: [{cx:118, cy:130, r:4}]
+    },
+    {
+      name: "Songbird",
+      paths: [
+        "M67,150 L38,144 L67,161 Z",
+        "M195,176 L242,155 L242,197 Z",
+        "M150,150 Q176,140 190,166 Q164,176 150,150 Z",
+        "M125,204 L125,222", "M150,206 L150,224",
+      ],
+      ellipses: [{cx:152, cy:172, rx:52, ry:40}, {cx:95, cy:150, rx:28, ry:28}],
+      dots: [{cx:88, cy:142, r:4}]
+    },
+  ],
+  "Flowers": [
+    {
+      name: "Tulip",
+      paths: [
+        "M120,120 C120,78 132,58 150,58 C168,58 180,78 180,120 C180,142 165,152 150,152 C135,152 120,142 120,120 Z",
+        "M150,152 L150,252",
+        "M150,202 C118,196 108,218 96,232",
+        "M150,214 C182,208 194,230 206,244",
+      ],
+      ellipses: [],
+      dots: []
+    },
+    {
+      name: "Sunflower",
+      petals: { cx:150, cy:150, count:8, rx:16, ry:34, offset:64 },
+      centerCircle: {cx:150, cy:150, r:28},
+      paths: ["M150,178 L150,260"],
+      dots: []
+    },
+    {
+      name: "Daisy",
+      petals: { cx:150, cy:150, count:10, rx:9, ry:38, offset:60 },
+      centerCircle: {cx:150, cy:150, r:20},
+      paths: ["M150,170 L150,258"],
+      dots: []
+    },
+  ],
+  "Fruits": [
+    {
+      name: "Apple",
+      paths: [
+        "M150,92 C120,62 70,92 70,142 C70,192 112,232 150,262 C188,232 230,192 230,142 C230,92 180,62 150,92 Z",
+        "M150,92 L150,68",
+        "M150,76 C166,60 192,66 190,82 C174,86 160,86 150,76 Z",
+      ],
+      ellipses: [],
+      dots: []
+    },
+    {
+      name: "Banana",
+      paths: [
+        "M90,204 C88,150 110,90 162,68 C212,50 244,78 236,110 C220,88 198,84 178,100 C138,132 120,172 122,212 C124,232 100,228 90,204 Z",
+      ],
+      ellipses: [],
+      dots: []
+    },
+    {
+      name: "Strawberry",
+      paths: [
+        "M150,112 C108,112 88,152 98,192 C110,234 130,264 150,274 C170,264 190,234 202,192 C212,152 192,112 150,112 Z",
+        "M120,106 L150,122 L180,106 L166,90 L150,100 L134,90 Z",
+      ],
+      ellipses: [],
+      dots: [{cx:125,cy:170,r:3},{cx:150,cy:190,r:3},{cx:175,cy:170,r:3},{cx:135,cy:210,r:3},{cx:165,cy:210,r:3}]
+    },
+  ],
+};
+
+const COLORS = ["#66321F", "#CE7E5A", "#D9BC7D", "#8FAE9C", "#7C9CBF", "#C46A8F", "#D9534F", "#4A7C59"];
+
+const categories = Object.keys(SHAPES);
+let currentCategory = categories[0];
+let currentIndex = 0;
+let currentColor = COLORS[0];
+
+const tabsEl = document.getElementById('tabs');
+const labelEl = document.getElementById('shape-label');
+const svg = document.getElementById('guide-svg');
+const canvas = document.getElementById('draw-canvas');
+const ctx = canvas.getContext('2d');
+const toolbar = document.getElementById('toolbar');
+
+function buildTabs() {
+  tabsEl.innerHTML = '';
+  categories.forEach(cat => {
+    const btn = document.createElement('div');
+    btn.className = 'tab' + (cat === currentCategory ? ' active' : '');
+    btn.textContent = cat;
+    btn.addEventListener('click', () => {
+      currentCategory = cat;
+      currentIndex = 0;
+      buildTabs();
+      renderShape();
+    });
+    tabsEl.appendChild(btn);
+  });
+}
+
+function buildToolbar() {
+  toolbar.innerHTML = '';
+  COLORS.forEach((c, i) => {
+    const sw = document.createElement('div');
+    sw.className = 'swatch' + (i === 0 ? ' active' : '');
+    sw.style.background = c;
+    sw.addEventListener('click', () => {
+      document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+      sw.classList.add('active');
+      currentColor = c;
+    });
+    toolbar.appendChild(sw);
+  });
+}
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+function renderShape() {
+  const list = SHAPES[currentCategory];
+  const shape = list[currentIndex];
+  labelEl.textContent = `${currentCategory} — ${shape.name} (${currentIndex + 1} of ${list.length})`;
+
+  svg.innerHTML = '';
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  (shape.paths || []).forEach(d => {
+    svg.appendChild(svgEl('path', { d, class: 'guide-line' }));
+  });
+  (shape.ellipses || []).forEach(e => {
+    svg.appendChild(svgEl('ellipse', {
+      cx: e.cx, cy: e.cy, rx: e.rx, ry: e.ry, class: 'guide-line'
+    }));
+  });
+  (shape.dots || []).forEach(d => {
+    svg.appendChild(svgEl('circle', { cx: d.cx, cy: d.cy, r: d.r, class: 'guide-dot' }));
+  });
+
+  if (shape.centerCircle) {
+    const cc = shape.centerCircle;
+    svg.appendChild(svgEl('circle', { cx: cc.cx, cy: cc.cy, r: cc.r, class: 'guide-line' }));
+  }
+  if (shape.petals) {
+    const p = shape.petals;
+    for (let i = 0; i < p.count; i++) {
+      const angle = (360 / p.count) * i;
+      const ellipse = svgEl('ellipse', {
+        cx: p.cx, cy: p.cy - p.offset, rx: p.rx, ry: p.ry,
+        class: 'guide-line',
+        transform: `rotate(${angle} ${p.cx} ${p.cy})`
+      });
+      svg.appendChild(ellipse);
+    }
+  }
+
+  document.getElementById('prev-btn').disabled = (currentIndex === 0);
+  document.getElementById('next-btn').textContent =
+    (currentIndex === list.length - 1) ? 'Next category ▶' : 'Next ▶';
+}
+
+document.getElementById('prev-btn').addEventListener('click', () => {
+  if (currentIndex > 0) {
+    currentIndex -= 1;
+    renderShape();
+  }
+});
+
+document.getElementById('next-btn').addEventListener('click', () => {
+  const list = SHAPES[currentCategory];
+  if (currentIndex < list.length - 1) {
+    currentIndex += 1;
+    renderShape();
+  } else {
+    const catIdx = categories.indexOf(currentCategory);
+    const nextCat = categories[(catIdx + 1) % categories.length];
+    currentCategory = nextCat;
+    currentIndex = 0;
+    buildTabs();
+    renderShape();
+  }
+});
+
+document.getElementById('clear-btn').addEventListener('click', () => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+});
+
+// ---------- Drawing ----------
+let drawing = false;
+let last = null;
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const point = e.touches ? e.touches[0] : e;
+  return {
+    x: (point.clientX - rect.left) * scaleX,
+    y: (point.clientY - rect.top) * scaleY,
+  };
+}
+function start(e) { drawing = true; last = getPos(e); }
+function move(e) {
+  if (!drawing) return;
+  const p = getPos(e);
+  ctx.strokeStyle = currentColor;
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(last.x, last.y);
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+  last = p;
+  e.preventDefault();
+}
+function end() { drawing = false; }
+
+canvas.addEventListener('mousedown', start);
+canvas.addEventListener('mousemove', move);
+window.addEventListener('mouseup', end);
+canvas.addEventListener('touchstart', start);
+canvas.addEventListener('touchmove', move);
+window.addEventListener('touchend', end);
+
+// ---------- Init ----------
+buildTabs();
+buildToolbar();
+renderShape();
+</script>
+</body>
+</html>
