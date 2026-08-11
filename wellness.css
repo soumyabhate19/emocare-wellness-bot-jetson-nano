@@ -461,3 +461,62 @@ section[data-testid="stCheckbox"] label {
   font-weight: 500;
   color: #F9E7B2;
 }
+
+/* ================= MOBILE / TABLET RESPONSIVENESS ================= */
+/* The fixed Action Compass panel (260px, floating on the right) works
+   fine on desktop but eats a huge share of a phone/tablet's width and
+   can overlap content. Below 900px, drop it out of "fixed" mode entirely
+   and let it sit as a normal full-width card in the page flow instead. */
+@media (max-width: 900px) {
+  .emocare-fixed-compass {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    margin: 1rem 0 !important;
+    right: auto !important;
+    top: auto !important;
+  }
+}
+
+/* Navbar: smaller text/gaps so more links fit per row before wrapping,
+   and a bit of horizontal breathing room on narrow screens. */
+@media (max-width: 640px) {
+  .emocare-navbar {
+    gap: 14px !important;
+    padding: 10px 14px !important;
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .emocare-navbar-link {
+    font-size: 12px !important;
+    white-space: nowrap !important;
+  }
+  /* Navbar may wrap to more lines on very narrow screens (or scroll
+     horizontally per above) — give the spacer a bit more room so page
+     content doesn't start underneath it. */
+  .emocare-navbar-spacer {
+    height: 60px !important;
+  }
+}
+
+/* Main content card: less side padding on small screens so text isn't
+   cramped, and let it use the full viewport width instead of a fixed
+   max-width margin that leaves awkward gaps on narrow devices. */
+@media (max-width: 768px) {
+  main .block-container {
+    padding: 1rem !important;
+    max-width: 100% !important;
+  }
+  .avatar-text {
+    white-space: normal !important;
+    font-size: 1.3rem !important;
+  }
+  .avatar-container {
+    flex-direction: column;
+    text-align: center;
+    padding: 16px 18px;
+  }
+}
