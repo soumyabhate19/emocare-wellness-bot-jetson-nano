@@ -54,10 +54,15 @@ li, a, small, strong, em {
 /* SVG fix attempt didn't work in practice — fallback: make this inner
    button fully transparent (no border, no distinct background) so it
    blends into the parent box instead of showing as its own separate
-   white/cream square. No visible arrow, but no jarring empty box either. */
-[data-testid="stSelectbox"] button {
+   white/cream square. No visible arrow, but no jarring empty box either.
+   Making just the <button> transparent wasn't enough — something nested
+   INSIDE it (svg, or a wrapping span) still had its own background, so
+   this now targets every descendant of the button too. */
+[data-testid="stSelectbox"] button,
+[data-testid="stSelectbox"] button * {
   border: none !important;
   background: transparent !important;
+  background-color: transparent !important;
   box-shadow: none !important;
 }
 
@@ -121,9 +126,11 @@ section[data-testid="stSidebar"] [data-testid="stSelectbox"] [data-testid="stWid
   color: #000000 !important;
 }
 
-section[data-testid="stSidebar"] [data-testid="stSelectbox"] button {
+section[data-testid="stSidebar"] [data-testid="stSelectbox"] button,
+section[data-testid="stSidebar"] [data-testid="stSelectbox"] button * {
   border: none !important;
   background: transparent !important;
+  background-color: transparent !important;
   box-shadow: none !important;
 }
 
