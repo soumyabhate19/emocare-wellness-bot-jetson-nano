@@ -913,7 +913,10 @@ center_col, right_col = st.columns([2.7, 1.0], gap="large")
 
 # ------------------ CENTER PANEL ------------------
 with center_col:
-    st.title("🧠 EmoCare 🧘🏻‍♀️")
+    st.markdown(
+        '<div class="emocare-title">EmoCare</div>',
+        unsafe_allow_html=True,
+    )
     st.subheader("Your own Wellness Companion")
     st.caption("A gentle space to reflect on your thoughts and feelings.\n")
 
@@ -1098,7 +1101,7 @@ with center_col:
                 <div style="display:flex;justify-content:space-between;
                             flex-wrap:wrap;gap:8px;color:#FDF6E3;
                             font-size:13px;opacity:0.85;padding:0 4px;">
-                    <span>Baltimore, MD</span>
+                    <span>Boston, MA</span>
                     <span>Soumya Bhate · EmoCare © 2026</span>
                 </div>
             </div>
