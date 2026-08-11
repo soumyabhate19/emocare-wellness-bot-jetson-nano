@@ -16,22 +16,20 @@ li, a, small, strong, em {
 }
 
 /* ================= SELECT / DROPDOWN ================= */
-/* CONFIRMED via live DevTools inspection: this Streamlit version renders
-   the selectbox trigger as a <button> (react-aria based), not the older
-   div[data-baseweb="select"] structure. Targeting by data-testid + button
-   tag directly, since that's what's actually in the DOM now. Old
-   div[data-baseweb] rules kept too as harmless backward-compat in case
-   of a different Streamlit version locally. */
-[data-testid="stSelectbox"] button {
-  background: #F9E7B2 !important;
-  color: #4A2E10 !important;
-  border: 1px solid #D9BC7D !important;
-  border-radius: 8px !important;
-}
-
-[data-testid="stSelectbox"] button * {
+/* The visible black trigger area turned out to be a wrapper element
+   around the <button>, not the button itself — targeting just the
+   button only recolored a small inner part (the chevron icon box).
+   Forcing background on EVERY element inside stSelectbox is broader
+   but far more reliable than guessing at the exact wrapper's selector. */
+[data-testid="stSelectbox"] * {
+  background-color: #F9E7B2 !important;
   color: #4A2E10 !important;
   fill: #4A2E10 !important;
+}
+
+[data-testid="stSelectbox"] button {
+  border: 1px solid #D9BC7D !important;
+  border-radius: 8px !important;
 }
 
 div[data-baseweb="select"] > div {
@@ -56,14 +54,14 @@ div[data-baseweb="popover"] li:hover {
 }
 
 /* Sidebar variant: dark brown instead of cream */
-section[data-testid="stSidebar"] [data-testid="stSelectbox"] button {
-  background: #66321F !important;
-  border: 1px solid #8A5738 !important;
-}
-
-section[data-testid="stSidebar"] [data-testid="stSelectbox"] button * {
+section[data-testid="stSidebar"] [data-testid="stSelectbox"] * {
+  background-color: #66321F !important;
   color: #F9E7B2 !important;
   fill: #F9E7B2 !important;
+}
+
+section[data-testid="stSidebar"] [data-testid="stSelectbox"] button {
+  border: 1px solid #8A5738 !important;
 }
 
 section[data-testid="stSidebar"] [data-testid="stSelectbox"] div[data-baseweb="select"] > div,
