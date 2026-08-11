@@ -56,6 +56,23 @@ li, a, small, strong, em {
   border-radius: 8px !important;
 }
 
+/* The dropdown chevron icon (an <svg fill="currentColor"> with an
+   invisible bounding-box path plus the visible arrow path) was becoming
+   invisible — its own square background matched its fill color. Setting
+   fill only on the <svg> itself (not the child <path> elements) lets the
+   visible arrow correctly inherit it via SVG's normal fill inheritance,
+   while the OTHER path's own explicit fill="none" attribute stays
+   untouched (a direct attribute on an element always beats an inherited
+   value, so this doesn't make that invisible bounding box show up). */
+[data-testid="stSelectbox"] svg {
+  fill: #4A2E10 !important;
+  background: transparent !important;
+}
+
+section[data-testid="stSidebar"] [data-testid="stSelectbox"] svg {
+  fill: #F9E7B2 !important;
+}
+
 div[data-baseweb="select"] > div {
   background: #F9E7B2 !important;
   border: 1px solid #D9BC7D !important;
