@@ -36,6 +36,9 @@ li, a, small, strong, em {
   background-color: #F9E7B2 !important;
   color: #4A2E10 !important;
   fill: #4A2E10 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
 }
 
 /* The wildcard rule above also catches the widget's own label text (e.g.
@@ -79,6 +82,9 @@ section[data-testid="stSidebar"] [data-testid="stSelectbox"] * {
   background-color: #66321F !important;
   color: #F9E7B2 !important;
   fill: #F9E7B2 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
 }
 
 /* Same label exclusion as above, for the sidebar's dark-brown variant —
